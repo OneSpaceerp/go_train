@@ -24,10 +24,14 @@ def check_app_permission():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _member():
-    """The Member linked to the signed-in user, or throw."""
+def _member(optional=False):
+    """The Member linked to the signed-in user.
+
+    Read endpoints pass optional=True so an admin or an unlinked user sees empty
+    data instead of an error; write endpoints require a real member.
+    """
     name = frappe.db.get_value("Member", {"user": frappe.session.user}, "name")
-    if not name:
+    if not name and not optional:
         frappe.throw(_("No gym member is linked to your account."), frappe.PermissionError)
     return name
 
@@ -67,7 +71,9 @@ def get_profile():
 @frappe.whitelist()
 def get_programs():
     """Programs the member is enrolled in, with progress counts."""
-    member = _member()
+    member = _member(optional=True)
+    if not member:
+        return []
     rows = frappe.get_all(
         "Member Program", filters={"member": member}, fields=["program", "start_date", "is_active"],
         order_by="is_active desc, start_date desc",
@@ -92,7 +98,7 @@ def get_programs():
 
 @frappe.whitelist()
 def get_program_workouts(program):
-    member = _member()
+    member = _member(optional=True)
     workouts = frappe.get_all(
         "Workout", filters={"program": program},
         fields=["name", "title", "letter", "day_index", "scheduled_date", "summary", "body"],
@@ -110,7 +116,7 @@ def get_program_workouts(program):
 
 @frappe.whitelist()
 def get_workout(workout):
-    member = _member()
+    member = _member(optional=True)
     doc = frappe.get_doc("Workout", workout)
     out = doc.as_dict()
     logs = frappe.get_all(
@@ -142,7 +148,9 @@ def log_workout(workout, status="Done", result=None, details=None, rpe=None,
 # ---------------------------------------------------------------------------
 @frappe.whitelist()
 def get_history(q=None):
-    member = _member()
+    member = _member(optional=True)
+    if not member:
+        return []
     conditions = "wl.member = %(member)s"
     values = {"member": member}
     if q:
@@ -163,7 +171,9 @@ def get_history(q=None):
 
 @frappe.whitelist()
 def get_insights():
-    member = _member()
+    member = _member(optional=True)
+    if not member:
+        return {"done": 0, "missed": 0, "logged": 0, "completion": 0}
     done = frappe.db.count("Workout Log", {"member": member, "status": "Done"})
     missed = frappe.db.count("Workout Log", {"member": member, "status": "Missed"})
     logged = len(frappe.get_all("Workout Log", filters={"member": member},
@@ -175,7 +185,9 @@ def get_insights():
 
 @frappe.whitelist()
 def get_tracking():
-    member = _member()
+    member = _member(optional=True)
+    if not member:
+        return []
     rows = frappe.get_all(
         "Progress Entry", filters={"member": member},
         fields=["metric", "unit", "value", "recorded_on"], order_by="metric asc, recorded_on asc",
