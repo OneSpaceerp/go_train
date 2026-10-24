@@ -17,14 +17,15 @@ required_apps = ["frappe/erpnext"]
 app_home = "/gotrain"
 
 # ---------------------------------------------------------------------------
-# App launcher — the Go Train tile opens the PWA.
+# App launcher — the Go Train tile opens the Desk workspace (the staff/management
+# app). The athlete PWA is reached directly at /gotrain (app_home).
 # ---------------------------------------------------------------------------
 add_to_apps_screen = [
     {
         "name": "go_train",
         "logo": "/assets/go_train/images/go_train_logo.png",
         "title": "Go Train",
-        "route": app_home,
+        "route": "/app/go-train",
         "has_permission": "go_train.api.pwa.check_app_permission",
     }
 ]
