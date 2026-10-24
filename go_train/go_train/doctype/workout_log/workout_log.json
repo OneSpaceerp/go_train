@@ -1,0 +1,207 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-10-24 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "member",
+  "workout",
+  "program",
+  "log_date",
+  "status",
+  "col1",
+  "rpe",
+  "duration",
+  "attachment",
+  "sec_res",
+  "result",
+  "details",
+  "sec_sets",
+  "set_logs"
+ ],
+ "fields": [
+  {
+   "fieldname": "member",
+   "fieldtype": "Link",
+   "label": "Member",
+   "options": "Member",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "workout",
+   "fieldtype": "Link",
+   "label": "Workout",
+   "options": "Workout",
+   "in_standard_filter": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "program",
+   "fieldtype": "Link",
+   "label": "Training Program",
+   "options": "Training Program"
+  },
+  {
+   "fieldname": "log_date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "default": "Today",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Done\nMissed",
+   "default": "Done",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break",
+   "label": "Col1"
+  },
+  {
+   "fieldname": "rpe",
+   "fieldtype": "Int",
+   "label": "RPE (1-10)"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "label": "Duration"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "fieldname": "sec_res",
+   "fieldtype": "Section Break",
+   "label": "Result"
+  },
+  {
+   "fieldname": "result",
+   "fieldtype": "Text",
+   "label": "Result"
+  },
+  {
+   "fieldname": "details",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "sec_sets",
+   "fieldtype": "Section Break",
+   "label": "Set Logs"
+  },
+  {
+   "fieldname": "set_logs",
+   "fieldtype": "Table",
+   "label": "Set Logs",
+   "options": "Workout Set Log"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Go Train",
+ "name": "Workout Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "System Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "Gym Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "Coach",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Front Desk",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Member",
+   "import": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "WL-.#####"
+}

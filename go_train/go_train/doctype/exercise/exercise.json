@@ -1,0 +1,176 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-10-24 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "exercise_name",
+  "sport",
+  "category",
+  "primary_muscle",
+  "equipment",
+  "col1",
+  "video_url",
+  "thumbnail",
+  "sec",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "exercise_name",
+   "fieldtype": "Data",
+   "label": "Exercise",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sport",
+   "fieldtype": "Link",
+   "label": "Sport",
+   "options": "Sport",
+   "in_standard_filter": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "\nStrength\nEngine\nWOD\nCore\nSkill\nMobility\nOther",
+   "in_standard_filter": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "primary_muscle",
+   "fieldtype": "Data",
+   "label": "Primary Muscle"
+  },
+  {
+   "fieldname": "equipment",
+   "fieldtype": "Data",
+   "label": "Equipment"
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break",
+   "label": "Col1"
+  },
+  {
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "Video URL"
+  },
+  {
+   "fieldname": "thumbnail",
+   "fieldtype": "Attach Image",
+   "label": "Thumbnail"
+  },
+  {
+   "fieldname": "sec",
+   "fieldtype": "Section Break",
+   "label": "Sec"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Go Train",
+ "name": "Exercise",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "System Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "Gym Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "Coach",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Front Desk",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Member",
+   "import": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "field:exercise_name",
+ "title_field": "exercise_name"
+}

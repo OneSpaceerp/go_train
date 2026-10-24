@@ -1,0 +1,237 @@
+{
+ "charts": [],
+ "content": "[{\"id\": \"gt_hdr_0\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Go Train</b></span>\", \"col\": 12}}, {\"id\": \"gt_sc_0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Members\", \"col\": 3}}, {\"id\": \"gt_sc_1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Workout Logs\", \"col\": 3}}, {\"id\": \"gt_sc_2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Programs\", \"col\": 3}}, {\"id\": \"gt_sc_3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Class Sessions\", \"col\": 3}}, {\"id\": \"gt_cd_0\", \"type\": \"card\", \"data\": {\"card_name\": \"Training\", \"col\": 4}}, {\"id\": \"gt_cd_1\", \"type\": \"card\", \"data\": {\"card_name\": \"Members\", \"col\": 4}}, {\"id\": \"gt_cd_2\", \"type\": \"card\", \"data\": {\"card_name\": \"Classes\", \"col\": 4}}, {\"id\": \"gt_cd_3\", \"type\": \"card\", \"data\": {\"card_name\": \"Attendance & Logs\", \"col\": 4}}]",
+ "creation": "2026-10-24 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "dashboard",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Go Train",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Training",
+   "link_count": 5,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sport",
+   "link_count": 0,
+   "link_to": "Sport",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Exercise",
+   "link_count": 0,
+   "link_to": "Exercise",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Training Program",
+   "link_count": 0,
+   "link_to": "Training Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Workout",
+   "link_count": 0,
+   "link_to": "Workout",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Member Program",
+   "link_count": 0,
+   "link_to": "Member Program",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Members",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Member",
+   "link_count": 0,
+   "link_to": "Member",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Coach",
+   "link_count": 0,
+   "link_to": "Coach",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Progress Entry",
+   "link_count": 0,
+   "link_to": "Progress Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Classes",
+   "link_count": 3,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Class Type",
+   "link_count": 0,
+   "link_to": "Class Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Class Session",
+   "link_count": 0,
+   "link_to": "Class Session",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Class Booking",
+   "link_count": 0,
+   "link_to": "Class Booking",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Attendance & Logs",
+   "link_count": 2,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Check In",
+   "link_count": 0,
+   "link_to": "Check In",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Workout Log",
+   "link_count": 0,
+   "link_to": "Workout Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Go Train",
+ "name": "Go Train",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "format": "",
+   "label": "Members",
+   "link_to": "Member",
+   "stats_filter": "",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "format": "",
+   "label": "Workout Logs",
+   "link_to": "Workout Log",
+   "stats_filter": "",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "format": "",
+   "label": "Programs",
+   "link_to": "Training Program",
+   "stats_filter": "",
+   "type": "DocType"
+  },
+  {
+   "color": "Purple",
+   "format": "",
+   "label": "Class Sessions",
+   "link_to": "Class Session",
+   "stats_filter": "",
+   "type": "DocType"
+  }
+ ],
+ "title": "Go Train"
+}

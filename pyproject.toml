@@ -1,0 +1,35 @@
+[project]
+name = "go_train"
+authors = [
+    { name = "nsdLabs", email = "info@nsd-eg.com" }
+]
+description = "Go Train — multi-sport fitness-space management (gym, CrossFit, calisthenics) and the backend for the Go Train PWA, on Frappe/ERPNext v16."
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = [
+    # Frappe and ERPNext are provided by the bench; do not pin them here.
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "go_train"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I", "UP", "B", "RUF"]
+ignore = [
+    "B017", "B018", "B023", "B904", "E101", "E402", "E501", "E741",
+    "F401", "F403", "F405", "F722", "RUF001", "RUF002", "RUF003",
+    "RUF012", "RUF013", "RUF015", "UP030", "UP031", "UP032", "W191",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
