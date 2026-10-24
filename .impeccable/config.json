@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "workout-search/index.html"
+        ],
+        "createdAt": "2026-10-24T13:57:52.991Z",
+        "reason": "Claude decided: Train Track's own app UI uses Inter (see train_track_screens/), so the prototype matches the existing product's typeface"
+      }
+    ]
+  }
+}

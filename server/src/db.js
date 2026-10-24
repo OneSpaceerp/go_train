@@ -1,0 +1,54 @@
+// Database layer. One small interface — db.query(sql, params) — backed by:
+//   * a real Postgres server when DATABASE_URL is set (node-pg), or
+//   * PGlite (Postgres compiled to WASM, persisted to ./.pgdata) otherwise.
+// Both speak the same SQL, so the schema and queries are identical either way.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Minimal .env loader (KEY=VALUE lines) so we need no dotenv dependency.
+try {
+  const envPath = path.resolve(__dirname, '..', '.env');
+  for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
+} catch { /* no .env file is fine */ }
+
+const DATA_DIR = path.resolve(__dirname, '..', '.pgdata');
+
+let impl; // { query, kind }
+
+export async function getDb() {
+  if (impl) return impl;
+  const url = process.env.DATABASE_URL;
+  if (url) {
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: url });
+    await pool.query('SELECT 1');
+    impl = { kind: 'postgres', query: (text, params) => pool.query(text, params), pool };
+    console.log('[db] connected to Postgres via DATABASE_URL');
+  } else {
+    const { PGlite } = await import('@electric-sql/pglite');
+    const pg = new PGlite(DATA_DIR);
+    await pg.query('SELECT 1');
+    // Normalize PGlite's result shape to node-pg's { rows, rowCount }.
+    impl = {
+      kind: 'pglite',
+      query: async (text, params = []) => {
+        const r = await pg.query(text, params);
+        return { rows: r.rows, rowCount: r.affectedRows ?? r.rows.length };
+      },
+      pg,
+    };
+    console.log('[db] using embedded PGlite at', DATA_DIR);
+  }
+  return impl;
+}
+
+export async function query(text, params) {
+  const d = await getDb();
+  return d.query(text, params);
+}

@@ -1,0 +1,20 @@
+# Optional: a real PostgreSQL server for Go Train.
+# Dev works with no database installed (the API falls back to embedded PGlite).
+# To use real Postgres instead:
+#   1. docker compose up -d
+#   2. in server/.env set: DATABASE_URL=postgres://gotrain:gotrain@localhost:5432/gotrain
+#   3. cd server && npm run db:reset   (creates schema + seed in Postgres)
+#   4. npm run dev
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: gotrain
+      POSTGRES_PASSWORD: gotrain
+      POSTGRES_DB: gotrain
+    ports:
+      - "5432:5432"
+    volumes:
+      - gotrain_pgdata:/var/lib/postgresql/data
+volumes:
+  gotrain_pgdata:

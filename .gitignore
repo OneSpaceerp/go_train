@@ -1,0 +1,14 @@
+node_modules/
+server/.pgdata/
+server/.env
+frontend/dist/
+frontend/dev-dist/
+*.log
+.DS_Store
+
+# uploaded files (keep the folder, not its contents)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# agent skill tooling (not part of the app)
+.agent/

@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Train Track Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f7; --surface: #ffffff; --surface-2: #f6f7f9; --line: #e6e8ec;
+    --ink: #111214; --ink-2: #6b7280; --ink-3: #9ca3af; --accent: #111214; --on-accent: #fff;
+    --mark: #ffe066; --mark-current: #ffb300; --danger: #e5484d; --ok: #22c08a;
+    --radius: 16px; --shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0e10; --surface: #17181b; --surface-2: #1f2024; --line: #2a2c31;
+      --ink: #f2f3f5; --ink-2: #a1a6b0; --ink-3: #6b7180; --accent: #f2f3f5; --on-accent: #111214;
+      --mark: #8a6d00; --mark-current: #c78a00;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d0e10; --surface: #17181b; --surface-2: #1f2024; --line: #2a2c31;
+    --ink: #f2f3f5; --ink-2: #a1a6b0; --ink-3: #6b7180; --accent: #f2f3f5; --on-accent: #111214;
+    --mark: #8a6d00; --mark-current: #c78a00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+  mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  mark.current { background: var(--mark-current); outline: 2px solid var(--mark-current); }
+  svg { display: block; }
+
+  /* Phone frame on wide screens, full-bleed on phones */
+  .stage { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+  .phone { position: relative; width: 100%; max-width: 400px; height: min(820px, calc(100vh - 48px)); background: var(--bg); border-radius: 36px; overflow: hidden; box-shadow: 0 0 0 10px #1b1c1f, 0 20px 60px rgba(0,0,0,.25); display: flex; flex-direction: column; }
+  @media (max-width: 480px) { .stage { padding: 0; } .phone { max-width: none; height: 100vh; border-radius: 0; box-shadow: none; } }
+
+  /* Train tab (entry point) */
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 18px 16px 12px; background: var(--surface); }
+  .avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-weight: 600; }
+  .welcome small { display: block; color: var(--ink-2); font-size: 12px; }
+  .welcome b { font-weight: 600; font-size: 16px; }
+  .icon-btn { width: 44px; height: 44px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; }
+  .topbar .spacer { flex: 1; }
+  .scroll { flex: 1; overflow-y: auto; padding: 16px; }
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .program { display: flex; align-items: center; gap: 14px; padding: 16px; margin-bottom: 16px; }
+  .prog-icon { width: 46px; height: 46px; border-radius: 10px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+  .program small { color: var(--ink-2); font-size: 12px; display: block; }
+  .program b { font-weight: 600; }
+  .day-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .day-head b { font-weight: 700; } .day-head span { color: var(--ink-2); font-weight: 600; margin-right: 6px; }
+  .check { width: 34px; height: 34px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; }
+  .day-body { padding: 16px 18px; white-space: pre-line; max-height: 160px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .actions { display: flex; gap: 10px; padding: 12px; background: var(--surface-2); border-radius: 0 0 var(--radius) var(--radius); }
+  .actions .sq { width: 54px; height: 54px; border-radius: 12px; background: var(--surface); display: grid; place-items: center; box-shadow: var(--shadow); }
+  .actions .log { flex: 1; height: 54px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 17px; }
+  .hint { color: var(--ink-2); font-size: 13px; text-align: center; margin-top: 14px; }
+  .tabbar { display: flex; justify-content: space-around; padding: 10px 0 18px; background: var(--surface); border-top: 1px solid var(--line); }
+  .tabbar div { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: var(--ink-2); }
+  .tabbar .on { color: var(--ink); font-weight: 600; }
+
+  /* Sheets (search + detail) */
+  .sheet { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; transform: translateY(100%); transition: transform .28s cubic-bezier(.2,.8,.2,1); z-index: 10; }
+  .sheet.open { transform: none; }
+  .sheet.push { transform: translateX(100%); z-index: 20; }
+  .sheet.push.open { transform: none; }
+  @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+  .sheet-head { display: flex; align-items: center; gap: 10px; padding: 20px 16px 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .sheet-head h1 { font-size: 22px; font-weight: 700; margin: 0; flex: 1; }
+  .search-wrap { padding: 14px 16px 6px; background: var(--bg); }
+  .search { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; height: 50px; }
+  .search:focus-within { border-color: var(--ink-3); }
+  .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; font-size: 16px; color: var(--ink); }
+  .search input::placeholder { color: var(--ink-2); }
+  .search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+  .clear { width: 22px; height: 22px; border-radius: 50%; background: var(--ink-3); color: var(--surface); display: none; place-items: center; }
+  .search.has-text .clear { display: grid; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 16px 4px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; height: 32px; padding: 0 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 500; white-space: nowrap; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .results { flex: 1; overflow-y: auto; padding: 6px 16px 16px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; margin: 18px 4px 8px; }
+  .count { font-size: 13px; color: var(--ink-2); margin: 10px 4px 0; }
+  .list { background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .row { display: block; width: 100%; text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row:hover, .row:focus-visible { background: var(--surface-2); outline: none; }
+  .row-top { display: flex; align-items: baseline; gap: 8px; }
+  .row-title { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-date { color: var(--ink-2); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .row-snip { color: var(--ink-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-snip.log { font-style: italic; }
+  .row-meta { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 600; color: var(--ink-2); background: var(--surface-2); border-radius: 6px; padding: 2px 7px; }
+  .tag.missed { color: var(--danger); }
+  .sugg { display: flex; align-items: center; gap: 14px; width: 100%; padding: 13px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+  .sugg:last-child { border-bottom: 0; }
+  .sugg:hover { background: var(--surface-2); }
+  .sugg .ico { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+  .sugg span { flex: 1; font-weight: 500; }
+  .sugg em { font-style: normal; color: var(--ink-2); font-size: 13px; }
+  .empty { text-align: center; color: var(--ink-2); padding: 48px 16px; }
+  .empty b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 4px; }
+  .sheet-foot { display: flex; justify-content: flex-end; padding: 14px 24px 22px; background: var(--surface); border-top: 1px solid var(--line); }
+  .sheet-foot button { color: var(--ink-2); font-weight: 500; font-size: 17px; }
+
+  /* Detail + Find in Workout */
+  .find { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .find .search { height: 40px; flex: 1; }
+  .find .search input { font-size: 15px; }
+  .find-count { font-size: 13px; color: var(--ink-2); min-width: 56px; text-align: right; font-variant-numeric: tabular-nums; }
+  .nav-btn { width: 34px; height: 34px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; }
+  .nav-btn:disabled { opacity: .35; cursor: default; }
+  .detail { flex: 1; overflow-y: auto; padding: 16px; }
+  .d-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .d-card h2 { display: flex; align-items: center; gap: 10px; font-size: 17px; margin: 0 0 4px; }
+  .d-card h2 i { font-style: normal; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 13px; }
+  .d-sub { color: var(--ink-2); font-size: 13px; margin-bottom: 10px; }
+  .d-label { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+  .d-text { white-space: pre-line; color: var(--ink-2); }
+  .d-log { white-space: pre-line; font-style: italic; background: var(--surface-2); border-radius: 10px; padding: 12px 16px; }
+  .d-comment { padding: 8px 0; border-top: 1px solid var(--line); }
+  .d-label + .d-comment { border-top: 0; }
+  .d-comment small { color: var(--ink-2); display: block; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="phone" id="phone">
+
+  <!-- Train tab: the entry point, as in the screenshots -->
+  <header class="topbar">
+    <div class="avatar">HE</div>
+    <div class="welcome"><small>Welcome,</small><b>Heba Elmenyawy</b></div>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="open-search" aria-label="Search workouts" title="Search workouts (/)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    </button>
+    <button class="icon-btn" aria-label="Notifications">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5-6.71V3.5a2 2 0 1 0-4 0v.79A7 7 0 0 0 5 11v5l-2 2v1h18v-1Z"/></svg>
+    </button>
+  </header>
+  <main class="scroll">
+    <div class="card program">
+      <div class="prog-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M2 10h2V8h2v8H4v-2H2zm4-3h3v10H6zm3 4h6v2H9zm6-4h3v10h-3zm3 1h2v2h2v4h-2v2h-2z"/></svg></div>
+      <div><small>Program</small><b>Competition Prep</b></div>
+    </div>
+    <div class="card">
+      <div class="day-head"><div><span>A)</span><b>Day 1</b></div><div class="check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></div></div>
+      <div class="day-body" id="day-body"></div>
+      <div class="actions">
+        <button class="sq" id="open-history" aria-label="History and search">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+        </button>
+        <button class="log">Log</button>
+        <button class="sq" aria-label="Timer"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 1h6v2H9zm3 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm1 8.4-3.3 2-1-1.6 2.3-1.4V8h2Z"/></svg></button>
+        <button class="sq" aria-label="Share"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" stroke="currentColor" stroke-width="2"/></svg></button>
+      </div>
+    </div>
+    <p class="hint">Tap the history button or the search icon, or press <b>/</b></p>
+  </main>
+  <nav class="tabbar" aria-label="Tabs">
+    <div class="on">▮▬▮<span>Train</span></div><div>▮▮<span>Track</span></div><div>▢<span>Messages</span></div><div>⊤<span>Profile</span></div>
+  </nav>
+
+  <!-- Search sheet (replaces the History sheet) -->
+  <section class="sheet" id="search-sheet" role="dialog" aria-modal="true" aria-labelledby="search-title">
+    <div class="sheet-head">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      <h1 id="search-title">History</h1>
+      <button id="close-search" aria-label="Close"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="search-wrap">
+      <label class="search" id="search-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="sr">Search workouts, results and comments</span>
+        <input id="q" type="search" placeholder="Search workouts, results, comments" autocomplete="off" enterkeyhint="search">
+        <button class="clear" id="clear" type="button" aria-label="Clear search"><svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2 2l6 6M8 2 2 8"/></svg></button>
+      </label>
+    </div>
+    <div class="chips" id="programs" role="group" aria-label="Program"></div>
+    <div class="results" id="results" aria-live="polite"></div>
+    <div class="sheet-foot"><button id="cancel">Cancel</button></div>
+  </section>
+
+  <!-- Workout detail with Find in Workout -->
+  <section class="sheet push" id="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="sheet-head">
+      <button id="back" aria-label="Back to results"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12H5m6-6-6 6 6 6"/></svg></button>
+      <h1 id="detail-title"></h1>
+    </div>
+    <div class="find">
+      <label class="search" id="find-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="sr">Find in workout</span>
+        <input id="find" type="search" placeholder="Find in workout" autocomplete="off">
+      </label>
+      <span class="find-count" id="find-count" aria-live="polite"></span>
+      <button class="nav-btn" id="find-prev" aria-label="Previous match"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button class="nav-btn" id="find-next" aria-label="Next match"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="detail" id="detail"></div>
+  </section>
+</div>
+</div>
+
+<script src="search.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+  const S = window.WorkoutSearch;
+  const TODAY = '2026-10-24'; // the screenshots' date, so the date sections match them
+  const index = S.buildIndex(window.WORKOUTS);
+  const $ = (id) => document.getElementById(id);
+  const state = { query: '', program: '', filter: '', current: null, findIdx: 0 };
+
+  const ICONS = {
+    log: '<path d="M5 4h11l3 3v13H5z M8 10h8M8 14h8M8 18h5" fill="none" stroke="currentColor" stroke-width="2"/>',
+    comment: '<path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    clip: '<path d="M16 7v9a4 4 0 0 1-8 0V6a2.5 2.5 0 0 1 5 0v9a1 1 0 0 1-2 0V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    missed: '<path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    recent: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  };
+  const icon = (k) => `<svg width="16" height="16" viewBox="0 0 24 24">${ICONS[k]}</svg>`;
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /** Escape text and wrap the given [start,end) ranges in <mark>. */
+  function highlight(text, ranges, markIdStart) {
+    let html = '', at = 0, n = markIdStart;
+    for (const r of ranges || []) {
+      html += esc(text.slice(at, r.start));
+      html += `<mark${n !== undefined ? ` data-i="${n++}"` : ''}>${esc(text.slice(r.start, r.end))}</mark>`;
+      at = r.end;
+    }
+    return html + esc(text.slice(at));
+  }
+
+  // Recent searches: a per-viewer convenience, so browser storage is fine (and optional).
+  const RECENT_KEY = 'tt-recent-searches';
+  const loadRecent = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch { return []; } };
+  function saveRecent(q) {
+    q = q.trim(); if (!q) return;
+    const list = [q, ...loadRecent().filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch {}
+  }
+
+  // ---------- Train tab ----------
+  $('day-body').textContent = window.WORKOUTS[0].description;
+
+  // ---------- Program chips ----------
+  const programs = [...new Set(window.WORKOUTS.map((w) => w.program))];
+  function renderChips() {
+    const chips = [['', 'All programs'], ...programs.map((p) => [p, p])];
+    $('programs').innerHTML = chips.map(([v, l]) =>
+      `<button class="chip" data-program="${esc(v)}" aria-pressed="${state.program === v}">${esc(l)}</button>`).join('') +
+      (state.filter ? `<button class="chip" data-unfilter aria-pressed="true">${esc(S.SUGGESTIONS.find((s) => s.id === state.filter).label)} ✕</button>` : '');
+  }
+  $('programs').addEventListener('click', (e) => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    if (b.hasAttribute('data-unfilter')) state.filter = '';
+    else state.program = b.dataset.program;
+    render();
+  });
+
+  // ---------- Results ----------
+  function rowHtml(r) {
+    const w = r.workout;
+    const snip = r.snippet;
+    const tags = [];
+    if (w.status === 'missed') tags.push('<span class="tag missed">Missed</span>');
+    if (snip.field === 'log') tags.push('<span class="tag">In your log</span>');
+    if (snip.field === 'comments') tags.push('<span class="tag">In comments</span>');
+    if ((w.attachments || []).length) tags.push(`<span class="tag">📎 ${w.attachments.length}</span>`);
+    tags.push(`<span class="tag">${esc(w.program)}</span>`);
+    return `<button class="row" data-id="${w.id}">
+      <div class="row-top"><span class="row-title" dir="auto">${highlight(w.title, r.titleRanges)}</span><span class="row-date">${w.date}</span></div>
+      <div class="row-snip${snip.field === 'log' ? ' log' : ''}" dir="auto">${highlight(snip.text, snip.ranges) || '&nbsp;'}</div>
+      <div class="row-meta">${tags.join('')}</div>
+    </button>`;
+  }
+
+  function suggestionsHtml() {
+    const recent = loadRecent();
+    let html = '';
+    if (recent.length) {
+      html += `<div class="section-title">Recent searches</div><div class="list">` +
+        recent.map((q) => `<button class="sugg" data-recent="${esc(q)}"><div class="ico">${icon('recent')}</div><span>${esc(q)}</span></button>`).join('') + `</div>`;
+    }
+    html += `<div class="section-title">Suggested</div><div class="list">` + S.SUGGESTIONS.map((s) => {
+      const n = S.search(index, '', { filter: s.id, program: state.program, today: TODAY }).total;
+      return `<button class="sugg" data-filter="${s.id}"><div class="ico">${icon(s.icon)}</div><span>${esc(s.label)}</span><em>${n}</em></button>`;
+    }).join('') + `</div>`;
+    return html;
+  }
+
+  function render() {
+    renderChips();
+    $('search-box').classList.toggle('has-text', !!state.query);
+    const res = S.search(index, state.query, { filter: state.filter, program: state.program, today: TODAY });
+    const browsing = !state.query.trim() && !state.filter;
+    let html = '';
+    if (browsing) html += suggestionsHtml();
+    else html += `<div class="count">${res.total} ${res.total === 1 ? 'workout' : 'workouts'}</div>`;
+
+    if (!res.total) {
+      html += `<div class="empty"><b>No results</b>Nothing matches “${esc(state.query)}”. Try another exercise, a weight like “56 kg”, or a date.</div>`;
+    } else {
+      if (res.topHits.length) html += `<div class="section-title">Top Hits</div><div class="list">${res.topHits.map(rowHtml).join('')}</div>`;
+      for (const s of res.sections) html += `<div class="section-title">${esc(s.title)}</div><div class="list">${s.results.map(rowHtml).join('')}</div>`;
+    }
+    $('results').innerHTML = html;
+  }
+
+  $('q').addEventListener('input', (e) => { state.query = e.target.value; render(); });
+  $('q').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { saveRecent(state.query); const first = $('results').querySelector('.row'); first && first.focus(); }
+    if (e.key === 'Escape' && state.query) { e.stopPropagation(); setQuery(''); }
+  });
+  function setQuery(q) { state.query = q; $('q').value = q; render(); $('q').focus(); }
+  $('clear').addEventListener('click', (e) => { e.preventDefault(); setQuery(''); });
+  $('results').addEventListener('click', (e) => {
+    const row = e.target.closest('.row');
+    if (row) { saveRecent(state.query); openDetail(row.dataset.id); return; }
+    const f = e.target.closest('[data-filter]');
+    if (f) { state.filter = f.dataset.filter; render(); return; }
+    const r = e.target.closest('[data-recent]');
+    if (r) setQuery(r.dataset.recent);
+  });
+
+  // ---------- Open / close ----------
+  function openSearch() {
+    $('search-sheet').classList.add('open');
+    render();
+    setTimeout(() => $('q').focus(), 50);
+  }
+  function closeSearch() { $('detail-sheet').classList.remove('open'); $('search-sheet').classList.remove('open'); }
+  $('open-search').addEventListener('click', openSearch);
+  $('open-history').addEventListener('click', openSearch);
+  $('close-search').addEventListener('click', closeSearch);
+  $('cancel').addEventListener('click', closeSearch);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); openSearch(); }
+    if (e.key === 'Escape') {
+      if ($('detail-sheet').classList.contains('open')) closeDetail();
+      else if ($('search-sheet').classList.contains('open')) closeSearch();
+    }
+  });
+
+  // ---------- Detail + Find in Workout ----------
+  function openDetail(id) {
+    state.current = window.WORKOUTS.find((w) => w.id === id);
+    $('detail-title').textContent = state.current.title;
+    $('find').value = state.query; // carry the query over, like opening a note from Notes search
+    state.findIdx = 0;
+    renderDetail();
+    $('detail-sheet').classList.add('open');
+  }
+  function closeDetail() { $('detail-sheet').classList.remove('open'); $('q').focus(); }
+  $('back').addEventListener('click', closeDetail);
+
+  function renderDetail() {
+    const w = state.current, q = $('find').value;
+    let n = 0;
+    const block = (text) => {
+      const ranges = S.findInText(text, q);
+      const html = highlight(text, ranges, n);
+      n += ranges.length;
+      return html;
+    };
+    let html = `<div class="d-card"><h2><i>${esc(w.title[0])}</i><span dir="auto">${block(w.title)}</span></h2>
+      <div class="d-sub">${esc(w.program)} · ${w.date}${w.status === 'missed' ? ' · <span style="color:var(--danger)">Missed</span>' : ''}</div>
+      <div class="d-text" dir="auto">${block(w.description)}</div></div>`;
+    html += `<div class="d-card"><div class="d-label">Your log</div>${w.log ? `<div class="d-log" dir="auto">${block(w.log)}</div>` : '<div class="d-text">Not logged</div>'}</div>`;
+    if ((w.comments || []).length) {
+      html += `<div class="d-card"><div class="d-label">Comments</div>` +
+        w.comments.map((c) => `<div class="d-comment"><small>${esc(c.author)}</small><div dir="auto">${block(c.text)}</div></div>`).join('') + `</div>`;
+    }
+    if ((w.attachments || []).length) {
+      html += `<div class="d-card"><div class="d-label">Files</div>` +
+        w.attachments.map((a) => `<div class="d-comment">📎 ${block(a.name)}</div>`).join('') + `</div>`;
+    }
+    $('detail').innerHTML = html;
+    state.matchCount = n;
+    if (state.findIdx >= n) state.findIdx = 0;
+    $('find-count').textContent = q.trim() ? (n ? `${state.findIdx + 1} of ${n}` : 'No match') : '';
+    $('find-prev').disabled = $('find-next').disabled = n < 2;
+    focusMatch();
+  }
+  function focusMatch() {
+    const marks = $('detail').querySelectorAll('mark');
+    marks.forEach((m) => m.classList.remove('current'));
+    const m = marks[state.findIdx];
+    if (m) { m.classList.add('current'); m.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+  function step(d) {
+    if (!state.matchCount) return;
+    state.findIdx = (state.findIdx + d + state.matchCount) % state.matchCount;
+    $('find-count').textContent = `${state.findIdx + 1} of ${state.matchCount}`;
+    focusMatch();
+  }
+  $('find').addEventListener('input', () => { state.findIdx = 0; renderDetail(); });
+  $('find').addEventListener('keydown', (e) => { if (e.key === 'Enter') step(e.shiftKey ? -1 : 1); });
+  $('find-next').addEventListener('click', () => step(1));
+  $('find-prev').addEventListener('click', () => step(-1));
+})();
+</script>
+</body>
+</html>
