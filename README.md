@@ -77,6 +77,33 @@ frontend/              Vue 3 PWA
 docker-compose.yml     optional real Postgres
 ```
 
+## Deploy on Vercel
+
+The repo is set up to deploy as one Vercel project with two services (see
+`vercel.json`): the Vite **frontend** and the Express **server**, with `/api/*`
+routed to the server and everything else to the frontend.
+
+PGlite is dev-only — serverless has no persistent disk — so production needs a
+real Postgres and a blob store. Steps:
+
+1. **Import the repo** on Vercel. It detects the two services from `vercel.json`.
+2. **Add a Postgres database** (Vercel Postgres/Neon, or any Postgres). Set the
+   **pooled** connection string as `DATABASE_URL` in the project's env vars.
+3. **Add Vercel Blob** storage (for attachments). It sets `BLOB_READ_WRITE_TOKEN`
+   automatically; uploads switch to Blob when that's present.
+4. **Set `JWT_SECRET`** to a strong random value.
+5. **Create the schema + seed once** against the database, from your machine:
+   ```bash
+   cd server
+   DATABASE_URL="<your pooled connection string>" npm run db:setup
+   ```
+   (`db:reset` instead drops and recreates.)
+6. **Deploy.** The frontend calls `/api/*` same-origin, so no API URL to configure.
+
+Required env vars: `DATABASE_URL`, `JWT_SECRET`, `BLOB_READ_WRITE_TOKEN` (auto).
+After the first deploy, check that refreshing a deep link (e.g. `/history`) works;
+the SPA fallback lives in `frontend/vercel.json`.
+
 ## Notes
 
 - `server/.pgdata/` (PGlite data) and `node_modules/` are local; don't commit them.

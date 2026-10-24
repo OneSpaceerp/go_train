@@ -21,15 +21,23 @@ const DATA_DIR = path.resolve(__dirname, '..', '.pgdata');
 
 let impl; // { query, kind }
 
+const IS_PROD = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
 export async function getDb() {
   if (impl) return impl;
   const url = process.env.DATABASE_URL;
   if (url) {
     const { default: pg } = await import('pg');
-    const pool = new pg.Pool({ connectionString: url });
+    // On serverless (Vercel), keep the pool tiny — many short-lived instances
+    // share the database. Use a pooled/PgBouncer connection string.
+    const pool = new pg.Pool({ connectionString: url, max: IS_PROD ? 1 : 10 });
     await pool.query('SELECT 1');
     impl = { kind: 'postgres', query: (text, params) => pool.query(text, params), pool };
     console.log('[db] connected to Postgres via DATABASE_URL');
+  } else if (IS_PROD) {
+    // PGlite writes to local disk and cannot persist on serverless — refuse to
+    // start silently with a throwaway database in production.
+    throw new Error('DATABASE_URL is required in production. PGlite is for local dev only.');
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
     const pg = new PGlite(DATA_DIR);

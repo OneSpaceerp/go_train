@@ -11,24 +11,19 @@ import { hashPassword, checkPassword, signToken, requireAuth, requireRole } from
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.resolve(__dirname, '..', 'uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const IS_PROD = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN; // set when Vercel Blob is attached
+if (!IS_PROD) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+// In dev, attachments live on disk and are served here. In production they go to
+// Vercel Blob (absolute URLs), so this route is unused there.
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// Attachments: stored on disk under server/uploads, served at /uploads/<name>.
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (_req, file, cb) => {
-      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-40);
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`);
-    },
-  }),
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
-});
+// Keep the uploaded file in memory, then store it on disk (dev) or Vercel Blob (prod).
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => {
   console.error(e);
@@ -143,7 +138,17 @@ app.get('/api/workouts/:id/logs', requireAuth, wrap(async (req, res) => {
 // Upload one attachment; returns a URL to store on a log.
 app.post('/api/uploads', requireAuth, upload.single('file'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-  res.status(201).json({ url: `/uploads/${req.file.filename}`, name: req.file.originalname, size: req.file.size });
+  const safe = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-40);
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`;
+  if (USE_BLOB) {
+    const { put } = await import('@vercel/blob');
+    const { url } = await put(`uploads/${filename}`, req.file.buffer, {
+      access: 'public', contentType: req.file.mimetype, token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+    return res.status(201).json({ url, name: req.file.originalname, size: req.file.size });
+  }
+  fs.writeFileSync(path.join(UPLOAD_DIR, filename), req.file.buffer);
+  res.status(201).json({ url: `/uploads/${filename}`, name: req.file.originalname, size: req.file.size });
 }));
 
 // Calendar: every scheduled workout in the client's enrolled programs, with its
@@ -330,6 +335,15 @@ app.get('/api/subscription', requireAuth, wrap(async (req, res) => {
 }));
 
 const PORT = process.env.PORT || 4000;
-initDb()
-  .then(() => app.listen(PORT, () => console.log(`[go-train] API on http://localhost:${PORT}`)))
-  .catch((e) => { console.error('Failed to start:', e); process.exit(1); });
+if (IS_PROD) {
+  // Production: the schema + seed are applied once out-of-band (npm run db:setup
+  // against DATABASE_URL), never on every cold start. Just serve.
+  app.listen(PORT, () => console.log(`[go-train] API listening on ${PORT}`));
+} else {
+  // Dev: create and seed the embedded database on first run, then serve.
+  initDb()
+    .then(() => app.listen(PORT, () => console.log(`[go-train] API on http://localhost:${PORT}`)))
+    .catch((e) => { console.error('Failed to start:', e); process.exit(1); });
+}
+
+export default app;
