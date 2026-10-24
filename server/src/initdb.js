@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import bcrypt from 'bcryptjs';
-import { query, getDb } from './db.js';
+import { query, getDb, hasDbUrl, hasAnyDbEnv } from './db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const read = (p) => fs.readFileSync(path.resolve(__dirname, '..', 'db', p), 'utf8');
@@ -201,6 +201,15 @@ async function seed() {
 // Run directly: node src/initdb.js [--reset]  (cross-platform entry check)
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const reset = process.argv.includes('--reset');
+  // Guard against seeding the wrong place: if a connection URL is set but isn't a
+  // usable postgres:// string (e.g. a Prisma Accelerate URL), stop instead of
+  // silently seeding the local embedded database.
+  if (hasAnyDbEnv() && !hasDbUrl()) {
+    console.error('A database URL is set but is not a standard postgres:// string ' +
+      '(Prisma Accelerate URLs are not usable here). Set DATABASE_URL to the direct ' +
+      'POSTGRES_URL value and re-run.');
+    process.exit(1);
+  }
   initDb({ reset })
     .then(async () => { console.log('[db] init complete'); const d = await getDb(); if (d.pool) await d.pool.end(); process.exit(0); })
     .catch((e) => { console.error(e); process.exit(1); });

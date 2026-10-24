@@ -74,3 +74,4 @@ export async function query(text, params) {
 }
 
 export const hasDbUrl = () => !!dbUrl();
+export const hasAnyDbEnv = () => RAW_URLS().length > 0;
