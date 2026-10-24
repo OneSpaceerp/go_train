@@ -12,3 +12,6 @@ server/uploads/*
 
 # agent skill tooling (not part of the app)
 .agent/
+
+# impeccable design-hook cache
+.impeccable/hook.cache.json
