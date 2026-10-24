@@ -33,10 +33,16 @@ const one = async (sql, params) => (await query(sql, params)).rows[0] || null;
 const many = async (sql, params) => (await query(sql, params)).rows;
 
 // --- Health & config ---------------------------------------------------------
-app.get('/api/health', wrap(async (_req, res) => {
-  const db = await getDb();
-  res.json({ ok: true, db: db.kind });
-}));
+// Diagnostic: reports whether the database connects, and why not if it doesn't.
+app.get('/api/health', async (_req, res) => {
+  try {
+    const db = await getDb();
+    await db.query('SELECT 1');
+    res.json({ ok: true, db: db.kind, database_url: !!process.env.DATABASE_URL });
+  } catch (e) {
+    res.status(200).json({ ok: false, database_url: !!process.env.DATABASE_URL, error: e.message });
+  }
+});
 app.get('/api/config', wrap(async (_req, res) => {
   res.json({ app: 'Go Train', version: '0.1.0', demoPassword: 'gotrain' });
 }));
