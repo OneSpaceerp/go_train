@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme roles as RGB channels so Tailwind's <alpha-value> works. Light is the
+   reference; dark follows the system. No in-app theme switch. */
+:root {
+  --ink: 4 0 46;        /* midnight ink — all values and titles */
+  --ink-soft: 75 90 110; /* secondary text, labels */
+  --ink-mute: 112 122 140;
+  --line: 215 221 230;
+  --surface: 255 255 255;
+  --page: 244 246 250;  /* mist page */
+  --sunk: 238 242 248;
+  --ok: 23 121 90;
+  --warn: 163 88 0;
+  --bad: 209 42 65;
+  --field: 150 162 180;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ink: 236 240 246; --ink-soft: 165 176 192; --ink-mute: 130 140 158;
+    --line: 42 46 56; --surface: 23 25 30; --page: 13 14 17; --sunk: 31 34 40;
+    --ok: 71 185 144; --warn: 255 151 29; --bad: 255 110 122; --field: 70 78 92;
+  }
+}
+:root[data-theme='dark'] {
+  --ink: 236 240 246; --ink-soft: 165 176 192; --ink-mute: 130 140 158;
+  --line: 42 46 56; --surface: 23 25 30; --page: 13 14 17; --sunk: 31 34 40;
+  --ok: 71 185 144; --warn: 255 151 29; --bad: 255 110 122; --field: 70 78 92;
+}
+
+html, body, #app { height: 100%; }
+body {
+  margin: 0;
+  background: rgb(var(--page));
+  color: rgb(var(--ink));
+  font-family: Poppins, Cairo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+* { -webkit-tap-highlight-color: transparent; }
+
+@layer components {
+  .card { @apply bg-surface rounded-card shadow-card; }
+  .btn { @apply inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium transition active:scale-[0.98] disabled:opacity-50; }
+  .btn-primary { @apply btn bg-brand-600 text-white active:bg-brand-700; }
+  .btn-outline { @apply btn bg-surface text-ink-soft border border-field; }
+  .btn-soft { @apply inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full font-medium bg-brand-50 text-brand-700 transition active:scale-[0.98]; }
+  .icon-btn { @apply grid place-items-center w-11 h-11 rounded-full text-ink-soft transition active:bg-surface-sunk; }
+  .field { @apply w-full h-[54px] px-4 rounded-field border border-field bg-surface text-ink text-base outline-none transition focus:border-brand-600; }
+  .pill { @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[0.8125rem] font-medium border; }
+  .section-label { @apply text-[0.8125rem] font-semibold uppercase tracking-wide text-ink-soft; }
+}
+
+/* Native-feeling scroll + hidden scrollbars on horizontal strips */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Page transitions: slide deeper / back; crossfade for tabs. Fade under reduced motion. */
+.slide-enter-active, .slide-leave-active { transition: transform .28s cubic-bezier(0.32,0.72,0,1), opacity .28s; }
+.slide-enter-from { transform: translateX(16px); opacity: 0; }
+.slide-leave-to { transform: translateX(-10px); opacity: 0; position: absolute; width: 100%; }
+.fade-enter-active, .fade-leave-active { transition: opacity .16s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .slide-enter-from { transform: none; }
+  .slide-leave-to { transform: none; }
+}
+
+mark { background: #FFE38A; color: inherit; border-radius: 3px; padding: 0 1px; }
+mark.current { background: #FFB300; outline: 2px solid #FFB300; }
+:root[data-theme='dark'] mark { background: #8a6d00; color: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) mark { background: #8a6d00; color: #fff; }
+}
