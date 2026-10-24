@@ -23,9 +23,13 @@ let impl; // { query, kind }
 
 const IS_PROD = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 
-// Vercel Postgres exposes POSTGRES_URL (pooled); a plain server uses DATABASE_URL.
-// Accept either so attaching a Vercel database needs no manual renaming.
-const dbUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
+// Providers expose the connection under different env names. We use node-pg, which
+// needs a standard postgres:// / postgresql:// URL — NOT Prisma's prisma+postgres://
+// (Accelerate) URL. So gather all candidates and pick the first real TCP string.
+const RAW_URLS = () =>
+  [process.env.DATABASE_URL, process.env.POSTGRES_URL, process.env.PRISMA_DATABASE_URL, process.env.POSTGRES_PRISMA_URL]
+    .filter(Boolean);
+const dbUrl = () => RAW_URLS().find((u) => /^postgres(ql)?:\/\//i.test(u)) || null;
 
 export async function getDb() {
   if (impl) return impl;
@@ -41,6 +45,10 @@ export async function getDb() {
   } else if (IS_PROD) {
     // PGlite writes to local disk and cannot persist on serverless — refuse to
     // start silently with a throwaway database in production.
+    if (RAW_URLS().length) {
+      throw new Error('A database is attached but no standard postgres:// connection string was found. ' +
+        'Prisma Accelerate URLs (prisma+postgres://) are not supported — use the direct POSTGRES_URL.');
+    }
     throw new Error('DATABASE_URL is required in production. PGlite is for local dev only.');
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
