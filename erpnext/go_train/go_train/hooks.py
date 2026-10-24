@@ -14,6 +14,21 @@ app_logo_url = "/assets/go_train/images/go_train_logo.png"
 required_apps = ["frappe/erpnext"]
 
 # ---------------------------------------------------------------------------
+# App launcher — show Go Train as a tile on the /apps screen (Frappe v15+),
+# opening the Go Train workspace. Without this the app's workspaces are only
+# reachable by direct URL (/app/go-train).
+# ---------------------------------------------------------------------------
+add_to_apps_screen = [
+    {
+        "name": "go_train",
+        "logo": "/assets/go_train/images/go_train_logo.png",
+        "title": "Go Train",
+        "route": "/app/go-train",
+        "has_permission": "go_train.setup.install.has_app_permission",
+    }
+]
+
+# ---------------------------------------------------------------------------
 # Installation — create roles and seed starter data (idempotent).
 # ---------------------------------------------------------------------------
 after_install = "go_train.setup.install.after_install"

@@ -26,6 +26,17 @@ SPORTS = [
 ]
 
 
+def has_app_permission():
+    """Who sees the Go Train tile on the /apps launcher.
+
+    Any Desk user who manages or coaches at the gym; System Managers always.
+    Members use the PWA (no Desk access), so they never reach this screen.
+    """
+    roles = set(frappe.get_roles())
+    allowed = {"System Manager", "Gym Manager", "Coach", "Front Desk"}
+    return bool(roles & allowed)
+
+
 def after_install():
     create_roles()
     seed_sports()
