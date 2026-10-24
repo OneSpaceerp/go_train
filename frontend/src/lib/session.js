@@ -38,7 +38,7 @@ export function applyTheme(theme = session.user?.theme || 'system') {
   else el.setAttribute('data-theme', theme)
 }
 
-// Initialize the session from the Frappe boot (www/go_train.py) or a dev lookup.
+// Initialize the session from the Frappe boot (www/gotrain.py) or a dev lookup.
 export function initFromBoot({ user, full_name }) {
   setUser({
     name: user,

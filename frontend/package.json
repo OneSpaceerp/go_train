@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Go Train PWA — Vue 3 + Vite, served from the go_train Frappe app at /go-train",
+  "description": "Go Train PWA — Vue 3 + Vite, served from the go_train Frappe app at /gotrain",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node copy-entry.js",

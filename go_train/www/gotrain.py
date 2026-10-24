@@ -1,6 +1,6 @@
 # Copyright (c) 2026, nsdLabs and contributors
 # For license information, please see license.txt
-"""Bootloader for the Go Train PWA, served at /go-train.
+"""Bootloader for the Go Train PWA, served at /gotrain.
 
 The template next to this file (go_train.html) starts from the Vite build output
 (copy-entry.js copies index.html here); `bench build --app go_train` regenerates it.
@@ -40,7 +40,7 @@ def get_boot():
         "site_name": frappe.local.site,
         "lang": frappe.local.lang,
         "socketio_port": frappe.conf.get("socketio_port") or 9000,
-        "default_route": "/go-train",
+        "default_route": "/gotrain",
         "version": go_train.__version__,
         "csrf_token": frappe.sessions.get_csrf_token(),
         "user": frappe.session.user,

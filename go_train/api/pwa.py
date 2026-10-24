@@ -1,6 +1,6 @@
 # Copyright (c) 2026, nsdLabs and contributors
 # For license information, please see license.txt
-"""Whitelisted API for the Go Train PWA (served at /go-train).
+"""Whitelisted API for the Go Train PWA (served at /gotrain).
 
 The PWA user is a Frappe User linked to a Member. Every endpoint resolves the
 member from the session and only ever returns that member's own data.

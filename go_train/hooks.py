@@ -13,8 +13,8 @@ app_logo_url = "/assets/go_train/images/go_train_logo.png"
 # nsdLabs is a brand under Nest Software Development.
 required_apps = ["frappe/erpnext"]
 
-# The installable PWA lives at /go-train (served by www/go_train.py + go_train.html).
-app_home = "/go-train"
+# The installable PWA lives at /gotrain (served by www/gotrain.py + gotrain.html).
+app_home = "/gotrain"
 
 # ---------------------------------------------------------------------------
 # App launcher — the Go Train tile opens the PWA.
@@ -30,11 +30,11 @@ add_to_apps_screen = [
 ]
 
 # ---------------------------------------------------------------------------
-# Website routing — every client-side route under /go-train is served by the
+# Website routing — every client-side route under /gotrain is served by the
 # single bootloader page, so the SPA owns its own navigation.
 # ---------------------------------------------------------------------------
 website_route_rules = [
-    {"from_route": "/go-train/<path:app_path>", "to_route": "go_train"},
+    {"from_route": "/gotrain/<path:app_path>", "to_route": "gotrain"},
 ]
 
 # ---------------------------------------------------------------------------

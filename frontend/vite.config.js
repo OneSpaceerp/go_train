@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // Frappe serves <app>/public at /assets/<app>/, so the built bundle lives at
-// /assets/go_train/frontend/ while the app itself is routed at /go-train.
+// /assets/go_train/frontend/ while the app itself is routed at /gotrain.
 const BASE = '/assets/go_train/frontend/'
 
 export default defineConfig(({ command }) => ({
@@ -16,12 +16,12 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        id: '/go-train',
+        id: '/gotrain',
         name: 'Go Train',
         short_name: 'Go Train',
         description: 'Programs, workouts, classes and progress for your gym.',
-        start_url: '/go-train',
-        scope: '/go-train',
+        start_url: '/gotrain',
+        scope: '/gotrain',
         display: 'standalone',
         orientation: 'any',
         background_color: '#F4F6FA',

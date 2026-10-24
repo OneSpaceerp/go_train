@@ -34,7 +34,7 @@ async function frappe(method, { args = {}, httpMethod = 'GET' } = {}) {
     clearSession()
     if (await isGuest()) {
       if (!location.pathname.includes('/login')) {
-        location.assign(`/login?redirect-to=${encodeURIComponent('/go-train')}`)
+        location.assign(`/login?redirect-to=${encodeURIComponent('/gotrain')}`)
       }
     }
     throw new Error('Not signed in')
