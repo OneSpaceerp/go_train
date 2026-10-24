@@ -23,9 +23,13 @@ let impl; // { query, kind }
 
 const IS_PROD = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 
+// Vercel Postgres exposes POSTGRES_URL (pooled); a plain server uses DATABASE_URL.
+// Accept either so attaching a Vercel database needs no manual renaming.
+const dbUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
+
 export async function getDb() {
   if (impl) return impl;
-  const url = process.env.DATABASE_URL;
+  const url = dbUrl();
   if (url) {
     const { default: pg } = await import('pg');
     // On serverless (Vercel), keep the pool tiny — many short-lived instances
@@ -60,3 +64,5 @@ export async function query(text, params) {
   const d = await getDb();
   return d.query(text, params);
 }
+
+export const hasDbUrl = () => !!dbUrl();

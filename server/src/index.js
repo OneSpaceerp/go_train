@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
-import { query, getDb } from './db.js';
+import { query, getDb, hasDbUrl } from './db.js';
 import { initDb } from './initdb.js';
 import { hashPassword, checkPassword, signToken, requireAuth, requireRole } from './auth.js';
 
@@ -38,9 +38,9 @@ app.get('/api/health', async (_req, res) => {
   try {
     const db = await getDb();
     await db.query('SELECT 1');
-    res.json({ ok: true, db: db.kind, database_url: !!process.env.DATABASE_URL });
+    res.json({ ok: true, db: db.kind, database_url: hasDbUrl() });
   } catch (e) {
-    res.status(200).json({ ok: false, database_url: !!process.env.DATABASE_URL, error: e.message });
+    res.status(200).json({ ok: false, database_url: hasDbUrl(), error: e.message });
   }
 });
 app.get('/api/config', wrap(async (_req, res) => {

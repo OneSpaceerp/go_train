@@ -87,8 +87,10 @@ PGlite is dev-only — serverless has no persistent disk — so production needs
 real Postgres and a blob store. Steps:
 
 1. **Import the repo** on Vercel. It detects the two services from `vercel.json`.
-2. **Add a Postgres database** (Vercel Postgres/Neon, or any Postgres). Set the
-   **pooled** connection string as `DATABASE_URL` in the project's env vars.
+2. **Add a Postgres database.** Easiest: the project's **Storage** tab → Create
+   Database → Postgres — it sets `POSTGRES_URL` automatically, which the app reads.
+   For any other Postgres, set the **pooled** connection string as `DATABASE_URL`.
+   (The server accepts `DATABASE_URL`, `POSTGRES_URL`, or `POSTGRES_PRISMA_URL`.)
 3. **Add Vercel Blob** storage (for attachments). It sets `BLOB_READ_WRITE_TOKEN`
    automatically; uploads switch to Blob when that's present.
 4. **Set `JWT_SECRET`** to a strong random value.
