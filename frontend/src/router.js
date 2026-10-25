@@ -3,6 +3,8 @@ import { session, isCoach } from './lib/session.js'
 
 // The SPA is served by Frappe under /gotrain, so vue-router's base is /gotrain.
 const routes = [
+  { path: '/login', component: () => import('./views/Login.vue'), meta: { public: true } },
+
   // Athlete tabs
   { path: '/', component: () => import('./views/Train.vue'), meta: { tab: 'train' } },
   { path: '/track', component: () => import('./views/Track.vue'), meta: { tab: 'track' } },
@@ -29,11 +31,9 @@ const routes = [
 export const router = createRouter({ history: createWebHistory('/gotrain'), routes })
 
 router.beforeEach((to) => {
-  // Auth is a Frappe session; if it's gone, hand off to Frappe's login page.
-  if (!session.user) {
-    window.location.assign(`/login?redirect-to=${encodeURIComponent('/gotrain')}`)
-    return false
-  }
+  if (to.meta.public) return true
+  // Auth is a Frappe session; without it, show the in-app Go Train login.
+  if (!session.user) return { path: '/login', query: to.fullPath !== '/' ? { 'redirect-to': to.fullPath } : {} }
   if (to.meta.coach && !isCoach()) return { path: '/' }
   return true
 })

@@ -10,7 +10,9 @@ const BASE = '/assets/go_train/frontend/'
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? BASE : '/',
   plugins: [
-    vue(),
+    // Leave absolute /assets/go_train/... URLs in templates as-is (Frappe serves them);
+    // Vite must not try to resolve them as bundled modules.
+    vue({ template: { transformAssetUrls: false } }),
     VitePWA({
       strategies: 'generateSW',
       registerType: 'autoUpdate',

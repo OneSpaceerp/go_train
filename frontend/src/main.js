@@ -26,12 +26,9 @@ async function start() {
     } catch { /* offline / not logged in */ }
   }
 
-  if (!user) {
-    window.location.assign(`/login?redirect-to=${encodeURIComponent('/gotrain')}`)
-    return
-  }
-
-  initFromBoot({ user, full_name: fullName })
+  // If signed in, seed the session; if not, mount anyway and let the router
+  // show the in-app Go Train login screen.
+  if (user) initFromBoot({ user, full_name: fullName })
   applyTheme()
   createApp(App).use(router).mount('#app')
 

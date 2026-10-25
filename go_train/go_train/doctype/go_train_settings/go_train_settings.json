@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-10-25 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sec_general",
+  "default_sport",
+  "brand_color",
+  "support_whatsapp",
+  "col1",
+  "gym_name",
+  "timezone",
+  "sec_pwa",
+  "members_can_self_book",
+  "members_can_self_checkin",
+  "show_progress_charts",
+  "col2",
+  "pwa_welcome_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "sec_general",
+   "fieldtype": "Section Break",
+   "label": "General"
+  },
+  {
+   "fieldname": "default_sport",
+   "fieldtype": "Link",
+   "label": "Default Sport",
+   "options": "Sport"
+  },
+  {
+   "fieldname": "brand_color",
+   "fieldtype": "Data",
+   "label": "Brand Color",
+   "default": "#FB5A5F",
+   "description": "Accent colour used across the Go Train PWA."
+  },
+  {
+   "fieldname": "support_whatsapp",
+   "fieldtype": "Data",
+   "label": "Support WhatsApp"
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break",
+   "label": "Col1"
+  },
+  {
+   "fieldname": "gym_name",
+   "fieldtype": "Data",
+   "label": "Gym / Space Name"
+  },
+  {
+   "fieldname": "timezone",
+   "fieldtype": "Data",
+   "label": "Timezone",
+   "default": "Africa/Cairo"
+  },
+  {
+   "fieldname": "sec_pwa",
+   "fieldtype": "Section Break",
+   "label": "Athlete App (PWA)"
+  },
+  {
+   "fieldname": "members_can_self_book",
+   "fieldtype": "Check",
+   "label": "Members can book classes",
+   "default": "1"
+  },
+  {
+   "fieldname": "members_can_self_checkin",
+   "fieldtype": "Check",
+   "label": "Members can self check-in",
+   "default": "1"
+  },
+  {
+   "fieldname": "show_progress_charts",
+   "fieldtype": "Check",
+   "label": "Show progress charts",
+   "default": "1"
+  },
+  {
+   "fieldname": "col2",
+   "fieldtype": "Column Break",
+   "label": "Col2"
+  },
+  {
+   "fieldname": "pwa_welcome_message",
+   "fieldtype": "Small Text",
+   "label": "Welcome message"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "istable": 0,
+ "links": [],
+ "modified": "2026-10-25 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Go Train",
+ "name": "Go Train Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "System Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 1,
+   "export": 1,
+   "email": 1,
+   "share": 1,
+   "print": 1,
+   "role": "Gym Manager",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Coach",
+   "import": 0
+  },
+  {
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "submit": 0,
+   "cancel": 0,
+   "amend": 0,
+   "report": 0,
+   "export": 0,
+   "email": 0,
+   "share": 0,
+   "print": 0,
+   "role": "Front Desk",
+   "import": 0
+  }
+ ],
+ "quick_entry": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

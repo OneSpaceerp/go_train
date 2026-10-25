@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "frontend/index.html"
+        ],
+        "createdAt": "2026-10-25T09:50:05.697Z",
+        "reason": "Claude decided: launch-screen footer/tagline are intentionally faint white on the coral splash gradient (branding, not body text), mirroring the Nest app splash"
+      }
+    ]
+  }
+}

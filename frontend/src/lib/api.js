@@ -31,11 +31,9 @@ async function frappe(method, { args = {}, httpMethod = 'GET' } = {}) {
   }
   const res = await fetch(finalUrl, init)
   if (res.status === 401 || res.status === 403) {
-    clearSession()
     if (await isGuest()) {
-      if (!location.pathname.includes('/login')) {
-        location.assign(`/login?redirect-to=${encodeURIComponent('/gotrain')}`)
-      }
+      clearSession()
+      if (!location.pathname.includes('/login')) location.assign('/gotrain/login')
     }
     throw new Error('Not signed in')
   }
