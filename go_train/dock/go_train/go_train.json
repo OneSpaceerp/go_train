@@ -1,0 +1,23 @@
+{
+ "app": "go_train",
+ "creation": "2026-10-25 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Dock",
+ "idx": 0,
+ "items": [
+  {
+   "added": 0,
+   "hidden": 0,
+   "icon": "go-train-soft",
+   "link_to": "Go Train",
+   "link_type": "Sidebar",
+   "title": "Go Train"
+  }
+ ],
+ "modified": "2026-10-25 00:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "go_train",
+ "owner": "Administrator",
+ "standard": 1,
+ "user": ""
+}

@@ -13,6 +13,9 @@ app_logo_url = "/assets/go_train/images/go_train_logo.png"
 # nsdLabs is a brand under Nest Software Development.
 required_apps = ["frappe/erpnext"]
 
+# Dual-tone module icons for the v16 desk dock and sidebar headers.
+app_include_icons = ["/assets/go_train/icons/module-icons.svg"]
+
 # The installable PWA lives at /gotrain (served by www/gotrain.py + gotrain.html).
 app_home = "/gotrain"
 

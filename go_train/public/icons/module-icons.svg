@@ -1,0 +1,44 @@
+<!-- Dual-tone Go Train module icons for the v16 desk dock and sidebar headers,
+     drawn on a 24px grid to match the ERPNext/HRMS sprites: a "-duotone" symbol
+     for sidebar headers (filled from --duotone-light / --duotone-dark) and a
+     "-soft" symbol for the dock (shared soft-icon classes). The glyph is a
+     dumbbell. This sprite is inserted into the page as a document stylesheet. -->
+
+<svg id="go-train-module-symbols" aria-hidden="true" style="display: none;" class="icon" xmlns="http://www.w3.org/2000/svg">
+	<style>
+		.dock-item--duotone.active {
+			--duotone-light: var(--ink-gray-4);
+			--duotone-dark: light-dark(var(--ink-gray-6), var(--ink-gray-7));
+		}
+		/* the bar lifts a little while the dock tile is hovered */
+		.go-train-bar {
+			transform-box: view-box;
+			transform-origin: center;
+			transform: translateY(calc(var(--icon-motion-opacity, 0) * -0.8px));
+			transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+		}
+		@media (prefers-reduced-motion: reduce) {
+			.go-train-bar { transition: none; transform: none; }
+		}
+	</style>
+
+	<!-- Duotone (sidebar header): filled plates + bar -->
+	<symbol viewBox="0 0 24 24" id="icon-go-train-duotone" stroke="none" style="overflow: visible">
+		<g class="go-train-bar">
+			<path d="M2 9.2h2.4v5.6H2zM19.6 9.2H22v5.6h-2.4z" style="fill: var(--duotone-dark, light-dark(var(--ink-gray-5), var(--ink-gray-6)))" />
+			<path d="M5 6.6h2.6v10.8H5zM16.4 6.6H19v10.8h-2.6z" style="fill: var(--duotone-light, var(--ink-gray-3))" />
+			<path d="M7.6 10.6h8.8v2.8H7.6z" style="fill: var(--duotone-dark, light-dark(var(--ink-gray-5), var(--ink-gray-6)))" />
+		</g>
+	</symbol>
+
+	<!-- Soft (dock): stroked dumbbell with a filled bar -->
+	<symbol id="icon-go-train-soft" viewBox="0 0 24 24" class="soft-icon">
+		<g class="go-train-bar">
+			<rect x="2" y="8.8" width="2.4" height="6.4" rx="1" class="soft-accent"/>
+			<rect x="5" y="6.2" width="2.6" height="11.6" rx="1.1" class="soft-body"/>
+			<rect x="7.6" y="10.4" width="8.8" height="3.2" rx="1.1" class="soft-accent"/>
+			<rect x="16.4" y="6.2" width="2.6" height="11.6" rx="1.1" class="soft-body"/>
+			<rect x="19.6" y="8.8" width="2.4" height="6.4" rx="1" class="soft-accent"/>
+		</g>
+	</symbol>
+</svg>
