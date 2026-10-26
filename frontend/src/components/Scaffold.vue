@@ -101,7 +101,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 <template>
   <div
-    class="min-h-full flex flex-col"
+    class="min-h-dvh bg-surface-page text-ink flex flex-col"
     @touchstart.passive="onTouchStart"
     @touchmove.passive="onTouchMove"
     @touchend="onTouchEnd"

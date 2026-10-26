@@ -27,7 +27,7 @@ const workouts = ref([])
 const calendar = ref(api.cached('/calendar') || [])
 const classInfo = ref(api.cached('/classes') || null)
 const checkingIn = ref(false)
-const loading = ref(!programs.value.length)
+const loading = ref(true)
 const expanded = ref(null)
 const showFullMonth = ref(false)
 const showIosInstallSheet = ref(false)
@@ -41,27 +41,79 @@ const greeting = computed(() => {
   return t('train.greeting.evening')
 })
 
+async function selectProgram(prog) {
+  if (!prog) return
+  haptics.select()
+  activeProgram.value = prog
+  const list = await api.get(`/programs/${prog.id}/workouts`).catch(() => [])
+  workouts.value = list.map((w) => ({ ...w, program_name: prog.name, program_id: prog.id }))
+  if (workouts.value.length) {
+    expanded.value = workouts.value[0].id
+  }
+}
+
 async function load() {
   try {
+    // Isolate each endpoint with .catch() so a failure in one never blocks workouts
     const [progs, cal, cls] = await Promise.all([
-      api.get('/programs'),
-      api.get('/calendar'),
+      api.get('/programs').catch(() => []),
+      api.get('/calendar').catch(() => []),
       api.get('/classes').catch(() => null),
     ])
-    programs.value = progs
-    calendar.value = cal
+    programs.value = progs || []
+    calendar.value = cal || []
     classInfo.value = cls
-    activeProgram.value = progs.find((p) => p.is_active) || progs[0] || null
-    if (activeProgram.value) {
-      workouts.value = await api.get(`/programs/${activeProgram.value.id}/workouts`)
+
+    if (programs.value.length) {
+      // Fetch workouts across all programs that have workouts (or all programs if counts aren't populated)
+      const candidateProgs = programs.value.filter((p) => (p.workout_count ?? 1) > 0)
+      const targetProgs = candidateProgs.length ? candidateProgs : programs.value
+
+      const perProgLists = await Promise.all(
+        targetProgs.map((p) =>
+          api
+            .get(`/programs/${p.id}/workouts`)
+            .then((list) =>
+              (list || []).map((w) => ({
+                ...w,
+                program_name: p.name,
+                program_id: p.id,
+              })),
+            )
+            .catch(() => []),
+        ),
+      )
+
+      // Pick the first program that actually returned workouts as activeProgram
+      const firstNonEmptyIdx = perProgLists.findIndex((list) => list.length > 0)
+      activeProgram.value =
+        firstNonEmptyIdx >= 0
+          ? targetProgs[firstNonEmptyIdx]
+          : programs.value.find((p) => p.is_active) || programs.value[0]
+
+      // Merge workouts across all programs (deduplicated by workout ID) so no workout is ever hidden
+      const seen = new Set()
+      const merged = []
+      for (const list of perProgLists) {
+        for (const w of list) {
+          if (!seen.has(w.id)) {
+            seen.add(w.id)
+            merged.push(w)
+          }
+        }
+      }
+      workouts.value = merged
+
       if (!expanded.value && workouts.value.length) {
-        const todayW = workouts.value.find(
-          (w) => dayjs(w.scheduled_on).format('YYYY-MM-DD') === todayIso,
+        const onSelected = workouts.value.find(
+          (w) =>
+            w.scheduled_on &&
+            dayjs(w.scheduled_on).format('YYYY-MM-DD') === selectedDay.value,
         )
-        expanded.value = (todayW || workouts.value[0]).id
+        expanded.value = (onSelected || workouts.value[0]).id
       }
     }
-    // Refresh unread notification count silently
+
     api.get('/notifications').catch(() => {})
   } finally {
     loading.value = false
@@ -92,6 +144,25 @@ async function onInstallClick() {
   }
 }
 
+// Merge backend calendar events with loaded workouts so status dots always appear
+const mergedCalendarEvents = computed(() => {
+  const byId = new Map()
+  for (const e of calendar.value) {
+    if (e.scheduled_on) byId.set(e.id, e)
+  }
+  for (const w of workouts.value) {
+    if (w.scheduled_on && !byId.has(w.id)) {
+      byId.set(w.id, {
+        id: w.id,
+        title: w.title,
+        scheduled_on: w.scheduled_on,
+        status: w.my_log?.status || 'upcoming',
+      })
+    }
+  }
+  return Array.from(byId.values())
+})
+
 // 7-day week strip centered around selectedDay's week
 const weekDays = computed(() => {
   const start = dayjs(selectedDay.value || todayIso).startOf('week')
@@ -100,7 +171,7 @@ const weekDays = computed(() => {
 
 const byDateStatus = computed(() => {
   const m = {}
-  for (const e of calendar.value) {
+  for (const e of mergedCalendarEvents.value) {
     const key = dayjs(e.scheduled_on).format('YYYY-MM-DD')
     const rank = { missed: 3, done: 2 }[e.status] || 1
     if (!m[key] || rank > m[key].rank) m[key] = { status: e.status || 'upcoming', rank }
@@ -114,15 +185,23 @@ const dotClass = (d) => {
   return { missed: 'bg-bad', done: 'bg-ok', upcoming: 'bg-brand-500' }[s.status]
 }
 
-// Workouts scheduled on the picked calendar day (across all programs).
-const dayWorkoutIds = computed(
-  () =>
-    new Set(
-      calendar.value
-        .filter((e) => dayjs(e.scheduled_on).format('YYYY-MM-DD') === selectedDay.value)
-        .map((e) => e.id),
-    ),
-)
+// Workouts scheduled on the picked calendar day (checking both workouts & calendar).
+const dayWorkoutIds = computed(() => {
+  if (!selectedDay.value) return new Set()
+  const ids = new Set()
+  for (const e of mergedCalendarEvents.value) {
+    if (dayjs(e.scheduled_on).format('YYYY-MM-DD') === selectedDay.value) {
+      ids.add(e.id)
+    }
+  }
+  for (const w of workouts.value) {
+    if (w.scheduled_on && dayjs(w.scheduled_on).format('YYYY-MM-DD') === selectedDay.value) {
+      ids.add(w.id)
+    }
+  }
+  return ids
+})
+
 const hasDayFilter = computed(() => Boolean(selectedDay.value) && dayWorkoutIds.value.size > 0)
 const shownWorkouts = computed(() =>
   hasDayFilter.value
@@ -130,7 +209,7 @@ const shownWorkouts = computed(() =>
     : workouts.value,
 )
 
-// Highlighted Hero Workout (today's workout, or first unlogged workout in program)
+// Highlighted Hero Workout (selected day's workout, or next unlogged workout, or first workout)
 const heroWorkout = computed(() => {
   if (!workouts.value.length) return null
   const onSelected = workouts.value.find((w) => dayWorkoutIds.value.has(w.id))
@@ -143,7 +222,7 @@ function onPick(date) {
   haptics.select()
   selectedDay.value = date
   const first = workouts.value.find(
-    (w) => dayjs(w.scheduled_on).format('YYYY-MM-DD') === date,
+    (w) => w.scheduled_on && dayjs(w.scheduled_on).format('YYYY-MM-DD') === date,
   )
   if (first) expanded.value = first.id
 }
@@ -239,7 +318,7 @@ function onPick(date) {
 
       <MonthCalendar
         v-if="showFullMonth"
-        :events="calendar"
+        :events="mergedCalendarEvents"
         :modelValue="selectedDay"
         @pick="onPick"
       />
@@ -324,17 +403,35 @@ function onPick(date) {
             {{ heroWorkout.my_log ? t('train.reviewLog') : t('train.startWorkout') }}
           </RouterLink>
           <RouterLink
-            v-if="activeProgram"
-            :to="`/programs/${activeProgram.id}`"
-            class="btn-outline !px-4 text-xs"
+            v-if="heroWorkout.program_id || activeProgram"
+            :to="`/programs/${heroWorkout.program_id || activeProgram.id}`"
+            class="btn-outline !px-4 text-xs truncate max-w-[10rem]"
           >
-            {{ activeProgram.name }}
+            {{ heroWorkout.program_name || activeProgram.name }}
           </RouterLink>
         </div>
       </div>
     </section>
 
-    <!-- Active Program Selector Bar -->
+    <!-- Active Program Selector Bar (with quick switcher pills when athlete has >1 program) -->
+    <div v-if="programs.length > 1" class="flex gap-1.5 overflow-x-auto no-scrollbar mb-3">
+      <button
+        v-for="p in programs"
+        :key="p.id"
+        type="button"
+        class="min-h-[38px] px-3.5 rounded-full text-xs font-semibold border transition shrink-0"
+        :class="
+          activeProgram?.id === p.id
+            ? 'bg-ink text-surface border-ink shadow-sm'
+            : 'bg-surface border-line text-ink-soft'
+        "
+        @click="selectProgram(p)"
+      >
+        {{ p.name }}
+        <span v-if="p.workout_count" class="opacity-75 ml-1 tabular-nums">({{ p.workout_count }})</span>
+      </button>
+    </div>
+
     <RouterLink
       v-if="activeProgram"
       to="/programs"
@@ -348,7 +445,7 @@ function onPick(date) {
         <p class="font-semibold text-ink truncate">{{ activeProgram.name }}</p>
       </div>
       <span class="pill border-line bg-surface-sunk text-ink-soft tabular-nums">
-        {{ workouts.length }} days
+        {{ workouts.length }} {{ workouts.length === 1 ? 'day' : 'days' }}
       </span>
       <Icon name="chevron" :size="19" class="text-ink-mute" />
     </RouterLink>
@@ -369,7 +466,7 @@ function onPick(date) {
     </div>
 
     <!-- Workout Cards List -->
-    <div v-if="loading" class="space-y-3">
+    <div v-if="loading && !workouts.length" class="space-y-3">
       <div v-for="i in 2" :key="i" class="card p-4 h-24 animate-pulse bg-surface-sunk"></div>
     </div>
     <EmptyState
@@ -393,8 +490,10 @@ function onPick(date) {
           </span>
           <div class="flex-1 min-w-0">
             <p class="font-bold text-ink truncate">{{ w.title }}</p>
-            <p v-if="w.scheduled_on" class="text-xs text-ink-mute tabular-nums">
-              {{ niceDate(w.scheduled_on) }}
+            <p class="text-xs text-ink-mute tabular-nums truncate">
+              <template v-if="w.scheduled_on">{{ niceDate(w.scheduled_on) }}</template>
+              <template v-if="w.scheduled_on && w.program_name"> · </template>
+              <template v-if="w.program_name">{{ w.program_name }}</template>
             </p>
           </div>
           <StatusPill v-if="w.my_log" :status="w.my_log.status" />

@@ -242,9 +242,15 @@ def _member_program_ids(member: str) -> list[str]:
 		filters={"member": member},
 		pluck="program",
 	)
-	if enrolled:
-		return list(dict.fromkeys(enrolled))
-	return frappe.get_all("Training Program", filters={"is_published": 1}, pluck="name")
+	published = frappe.get_all(
+		"Training Program",
+		filters={"is_published": 1},
+		pluck="name",
+	)
+	combined = list(dict.fromkeys([*(enrolled or []), *(published or [])]))
+	if combined:
+		return combined
+	return frappe.get_all("Training Program", pluck="name")
 
 
 @frappe.whitelist()
@@ -299,7 +305,7 @@ def get_calendar(month: str | None = None):
 
 @frappe.whitelist()
 def get_programs():
-	"""Programs assigned to the current member (or published programs if none assigned)."""
+	"""Programs assigned to the current member plus published programs, sorted with populated programs first."""
 	member = _get_or_create_member()
 	assigned = frappe.get_all(
 		"Member Program",
@@ -307,13 +313,15 @@ def get_programs():
 		fields=["name", "program", "is_active", "start_date"],
 		order_by="start_date desc",
 	)
-	program_names = [a.program for a in assigned]
+	assigned_names = [a.program for a in assigned]
 	active_by_program = {a.program: bool(cint(a.is_active)) for a in assigned}
 
+	published_names = frappe.get_all(
+		"Training Program", filters={"is_published": 1}, pluck="name"
+	)
+	program_names = list(dict.fromkeys([*assigned_names, *published_names]))
 	if not program_names:
-		program_names = frappe.get_all(
-			"Training Program", filters={"is_published": 1}, pluck="name"
-		)
+		program_names = frappe.get_all("Training Program", pluck="name")
 
 	if not program_names:
 		return []
@@ -347,6 +355,15 @@ def get_programs():
 		)
 		if p.get("coach"):
 			p["coach_name"] = frappe.db.get_value("Coach", p.coach, "coach_name") or p.coach
+
+	programs.sort(
+		key=lambda x: (
+			1 if cint(x.get("workout_count")) > 0 else 0,
+			1 if x.get("is_active") else 0,
+			cint(x.get("workout_count")),
+		),
+		reverse=True,
+	)
 	return programs
 
 

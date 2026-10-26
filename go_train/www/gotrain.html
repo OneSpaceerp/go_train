@@ -18,7 +18,11 @@
       /* Pre-bundle launch screen: inline so it paints on the first frame.
          Choreographed ~3.4s athletic reveal with coral/amber auroras,
          concentric cadence rings, SVG perimeter light trace, and 4-stage ticker. */
-      html, body { margin: 0; height: 100%; background: #070510; }
+      html, body { margin: 0; min-height: 100%; background: #F4F6FA; }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']), html:not([data-theme='light']) body { background: #0B0C10; }
+      }
+      html[data-theme='dark'], html[data-theme='dark'] body { background: #0B0C10; }
       .splash {
         position: fixed; inset: 0; z-index: 9999;
         display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -321,8 +325,8 @@
         .splash-bar-fill { animation: none; transform: scaleX(1); }
       }
     </style>
-    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-CcWJ5I93.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/go_train/frontend/assets/index-Gu3Rd3pj.css">
+    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-DnP_1RkM.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/go_train/frontend/assets/index-Bt08NoXy.css">
   <link rel="manifest" href="/assets/go_train/frontend/manifest.webmanifest"></head>
   <body>
     <div class="splash" data-splash role="status" aria-live="polite" aria-label="Loading Go Train">
