@@ -1,86 +1,55 @@
 # Go Train
 
-A **Frappe/ERPNext v16** application by **nsdLabs** (a brand under Nest Software
-Development) for running multi-sport fitness spaces — **gym, CrossFit,
-calisthenics and more** — carrying **both** the server (DocTypes, roles, API) and
-an installable **Vue 3 PWA** served at `/go-train`.
+<p align="center">
+  <img src="go_train/public/images/go_train_logo.png" alt="Go Train" width="96" height="96" />
+</p>
 
-- Publisher: nsdLabs · info@nsd-eg.com
-- Target: Frappe 16.5x / ERPNext 16.51+
-- App module: **Go Train**
+**Go Train** is a gym, coaching, workout programming, and athlete progress-tracking app built natively on **Frappe / ERPNext v16.51+**, paired with an installable mobile-first **Athlete & Coach PWA** served at `/gotrain`.
 
-This repo follows the same single-app structure as the Nest App: one Frappe app
-that holds the backend and a `frontend/` Vue SPA, built by Vite into
-`go_train/public/frontend/` and served by a Jinja bootloader in `go_train/www/`.
+---
 
-## Layout
+## Architecture & ERPNext v16.51+ Integration
 
-```
-go_train/                      ← repo root IS the Frappe app
-├── pyproject.toml             flit build, bench frappe-dependencies
-├── frontend/                  the Vue 3 + Vite PWA
-│   ├── index.html             splash + Jinja shell (built → www/go_train.html)
-│   ├── vite.config.js         base /assets/go_train/frontend/, build → ../go_train/public/frontend
-│   ├── copy-entry.js          copies built index.html → go_train/www/go_train.html
-│   └── src/                   App, router (base /go-train), views, components, lib/api.js (Frappe)
-└── go_train/                  ← the Python package
-    ├── hooks.py               website_route_rules (/go-train), add_to_apps_screen, after_install
-    ├── api/pwa.py             whitelisted PWA endpoints (member-scoped)
-    ├── www/go_train.py|.html  bootloader page served at /go-train
-    ├── setup/install.py       roles + starter sports on install
-    ├── public/images|manifest app logo + PWA icons
-    └── go_train/              the "Go Train" module
-        ├── doctype/…          15 training-core DocTypes
-        └── workspace/go_train Desk sidebar
-```
+- **Desk App Home & Icons (`/desk/go-train`)**:
+  - `app_home = "/desk/go-train"` with role-gated `/apps` screen tile (`go_train.api.pwa.check_app_permission`).
+  - Animated SVG icon sprite ([module-icons.svg](go_train/public/icons/module-icons.svg)) providing `#icon-go-train-duotone`, `#icon-go-train-soft`, `#icon-go-train-setup-duotone`, and `#icon-go-train-setup-soft`.
+  - **Dock & Dual Sidebars**: `Go Train` and `Go Train Setup` dock entries with matching `Workspace Sidebar` and `Sidebar` records for full Frappe v16.51+ compatibility.
+  - **Workspace Dashboard**: Real-time `Daily Check-ins` chart, `Check-ins Today`, `Workouts Logged This Month`, and `Active Members` number cards, plus quick-launch shortcuts.
+- **16 Native DocTypes**:
+  - **Athletes & Coaching**: `Member`, `Coach`, `Progress Entry`
+  - **Programming & Logging**: `Sport`, `Exercise`, `Training Program`, `Member Program`, `Workout`, `Workout Exercise`, `Workout Log`, `Workout Set Log`
+  - **Classes & Floor Operations**: `Class Type`, `Class Session`, `Class Booking`, `Check In`
+  - **Configuration**: `Go Train Settings`
+- **Athlete & Coach PWA (`/gotrain`)**:
+  - Vue 3 + Vite + Tailwind CSS SPA with a choreographed ~3.4s multi-stage athletic launch splash screen (aurora glow, concentric cadence rings, SVG perimeter light trace, sheen sweep, and 4-stage live status ticker in English & Arabic RTL).
+  - Dedicated Service Worker endpoint (`/api/method/go_train.api.pwa.sw`) with `Service-Worker-Allowed: /gotrain`.
+  - Full feature coverage: Month Calendar with workout status dots, Workout Logger with Stopwatch & File Attachments, Workout Comments, PR & Metric Tracker (`Track`), Group Class Booking & Floor Self Check-in (`Classes`), Direct Coach↔Athlete Messaging (`Messages`), Notifications, Exercise Library, Program Marketplace, Promos, Gym Roster, and Coach Mode (client management, program creation, and workout builder).
 
-## Install (on a Frappe v16 bench)
+---
+
+## Installation
+
+From your Frappe v16 bench:
 
 ```bash
-bench get-app go_train https://github.com/OneSpaceerp/go_train
-bench --site yoursite.local install-app go_train
-bench --site yoursite.local migrate
-cd apps/go_train/frontend && yarn install && yarn build   # builds the PWA
-cd ../../.. && bench build --app go_train
+bench get-app https://github.com/ksr2020/Go_Train.git
+bench --site <your-site> install-app go_train
+bench --site <your-site> migrate
 ```
 
-Then:
-- **Desk:** the **Go Train** workspace (and the launcher tile) — manage members,
-  programs, workouts, classes.
-- **PWA:** `https://yoursite/go-train` — the athlete app (install to home screen).
+On install and migrate, Go Train automatically creates the gym roles (`Gym Manager`, `Coach`, `Front Desk`, `Member`) and seeds starter `Sport`, `Exercise`, and `Class Type` records.
 
-Roles (Gym Manager, Coach, Front Desk, Member) and starter sports are created on
-install. A **Member** must be linked to a Frappe **User** for that person to use
-the PWA (the PWA is scoped to the signed-in member).
+---
 
-## Develop the PWA
+## Developing the PWA
 
 ```bash
-cd frontend
-yarn install
-FRAPPE_SITE_URL=http://yoursite.local:8000 yarn dev   # Vite dev, proxies /api,/app,/assets to the bench
+npm run dev      # Vite dev server
+npm run build    # Builds into go_train/public/frontend/ and updates go_train/www/gotrain.html
 ```
 
-Build for production: `yarn build` (runs `vite build` then `copy-entry.js`).
+---
 
-## Backend ⇄ frontend
+## License
 
-The PWA talks to the backend through whitelisted methods in
-`go_train/api/pwa.py` (`get_programs`, `get_program_workouts`, `log_workout`,
-`get_history`, `get_insights`, `get_tracking`, `get_classes`, `book_class`,
-`check_in`). `frontend/src/lib/api.js` maps the app's calls to those methods,
-authenticated by the Frappe session + CSRF token.
-
-## Roadmap
-
-1. ✅ Training core DocTypes + Desk workspace
-2. ✅ Single-app PWA structure (this layout), served at `/go-train`
-3. Membership & billing (ERPNext Subscription / Sales Invoice)
-4. Facilities, equipment, front-desk POS; realtime + push for the PWA
-5. Coach tools, reports, dashboards
-
-## Notes
-
-- `go_train/public/frontend/` is Vite build output — gitignored, regenerated by
-  `yarn build` / `bench build`.
-- See `DESIGN.md` for the Go Train design system and `PRODUCT.md` for scope.
+MIT

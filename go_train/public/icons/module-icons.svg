@@ -1,44 +1,104 @@
-<!-- Dual-tone Go Train module icons for the v16 desk dock and sidebar headers,
-     drawn on a 24px grid to match the ERPNext/HRMS sprites: a "-duotone" symbol
-     for sidebar headers (filled from --duotone-light / --duotone-dark) and a
-     "-soft" symbol for the dock (shared soft-icon classes). The glyph is a
-     dumbbell. This sprite is inserted into the page as a document stylesheet. -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <style>
+    .shell-header:hover .header-logo {
+      --go-train-hover-transform: translateY(-1.5px) scale(1.04);
+      --go-train-cog-transform: rotate(75deg);
+    }
+    .dock-item--duotone.active {
+      --go-train-tile-opacity: 1;
+    }
+    .dock-item--duotone:hover {
+      --go-train-hover-transform: translateY(-1.5px) scale(1.04);
+      --go-train-cog-transform: rotate(75deg);
+    }
+    .go-train-bar {
+      transform: var(--go-train-hover-transform, none);
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .go-train-setup-cog {
+      transform: var(--go-train-cog-transform, none);
+      transform-origin: 35px 35px;
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .go-train-bar, .go-train-setup-cog { transition: none; }
+    }
+  </style>
 
-<svg id="go-train-module-symbols" aria-hidden="true" style="display: none;" class="icon" xmlns="http://www.w3.org/2000/svg">
-	<style>
-		.dock-item--duotone.active {
-			--duotone-light: var(--ink-gray-4);
-			--duotone-dark: light-dark(var(--ink-gray-6), var(--ink-gray-7));
-		}
-		/* the bar lifts a little while the dock tile is hovered */
-		.go-train-bar {
-			transform-box: view-box;
-			transform-origin: center;
-			transform: translateY(calc(var(--icon-motion-opacity, 0) * -0.8px));
-			transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
-		}
-		@media (prefers-reduced-motion: reduce) {
-			.go-train-bar { transition: none; transform: none; }
-		}
-	</style>
+  <defs>
+    <linearGradient id="go-train-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB5A5F"/>
+      <stop offset="55%" stop-color="#F23D46"/>
+      <stop offset="100%" stop-color="#C81E2B"/>
+    </linearGradient>
+    <linearGradient id="go-train-gold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082"/>
+      <stop offset="100%" stop-color="#FFB300"/>
+    </linearGradient>
+  </defs>
 
-	<!-- Duotone (sidebar header): filled plates + bar -->
-	<symbol viewBox="0 0 24 24" id="icon-go-train-duotone" stroke="none" style="overflow: visible">
-		<g class="go-train-bar">
-			<path d="M2 9.2h2.4v5.6H2zM19.6 9.2H22v5.6h-2.4z" style="fill: var(--duotone-dark, light-dark(var(--ink-gray-5), var(--ink-gray-6)))" />
-			<path d="M5 6.6h2.6v10.8H5zM16.4 6.6H19v10.8h-2.6z" style="fill: var(--duotone-light, var(--ink-gray-3))" />
-			<path d="M7.6 10.6h8.8v2.8H7.6z" style="fill: var(--duotone-dark, light-dark(var(--ink-gray-5), var(--ink-gray-6)))" />
-		</g>
-	</symbol>
+  <!-- Sidebar header icon: Go Train -->
+  <symbol id="icon-go-train-duotone" viewBox="0 0 48 48" fill="none">
+    <rect width="48" height="48" rx="12" fill="url(#go-train-bg)"/>
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+    <g class="go-train-bar">
+      <!-- Center knurled bar -->
+      <rect x="17" y="22.25" width="14" height="3.5" rx="1.2" fill="#FFFFFF" fill-opacity="0.92"/>
+      <!-- Inner weight plates -->
+      <rect x="12.5" y="14" width="4.5" height="20" rx="2" fill="#FFFFFF"/>
+      <rect x="31" y="14" width="4.5" height="20" rx="2" fill="#FFFFFF"/>
+      <!-- Outer accent plates -->
+      <rect x="8.5" y="17.5" width="3" height="13" rx="1.5" fill="url(#go-train-gold)"/>
+      <rect x="36.5" y="17.5" width="3" height="13" rx="1.5" fill="url(#go-train-gold)"/>
+    </g>
+  </symbol>
 
-	<!-- Soft (dock): stroked dumbbell with a filled bar -->
-	<symbol id="icon-go-train-soft" viewBox="0 0 24 24" class="soft-icon">
-		<g class="go-train-bar">
-			<rect x="2" y="8.8" width="2.4" height="6.4" rx="1" class="soft-accent"/>
-			<rect x="5" y="6.2" width="2.6" height="11.6" rx="1.1" class="soft-body"/>
-			<rect x="7.6" y="10.4" width="8.8" height="3.2" rx="1.1" class="soft-accent"/>
-			<rect x="16.4" y="6.2" width="2.6" height="11.6" rx="1.1" class="soft-body"/>
-			<rect x="19.6" y="8.8" width="2.4" height="6.4" rx="1" class="soft-accent"/>
-		</g>
-	</symbol>
+  <!-- Dock icon: Go Train -->
+  <symbol id="icon-go-train-soft" viewBox="0 0 48 48" fill="none">
+    <rect width="48" height="48" rx="12" fill="url(#go-train-bg)" style="opacity: var(--go-train-tile-opacity, 0.9); transition: opacity 0.15s ease"/>
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+    <g class="go-train-bar">
+      <rect x="17" y="22.25" width="14" height="3.5" rx="1.2" fill="#FFFFFF" fill-opacity="0.92"/>
+      <rect x="12.5" y="14" width="4.5" height="20" rx="2" fill="#FFFFFF"/>
+      <rect x="31" y="14" width="4.5" height="20" rx="2" fill="#FFFFFF"/>
+      <rect x="8.5" y="17.5" width="3" height="13" rx="1.5" fill="url(#go-train-gold)"/>
+      <rect x="36.5" y="17.5" width="3" height="13" rx="1.5" fill="url(#go-train-gold)"/>
+    </g>
+  </symbol>
+
+  <!-- Sidebar header icon: Go Train Setup -->
+  <symbol id="icon-go-train-setup-duotone" viewBox="0 0 48 48" fill="none">
+    <rect width="48" height="48" rx="12" fill="url(#go-train-bg)"/>
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+    <g opacity="0.95">
+      <rect x="15" y="19.5" width="12" height="3" rx="1" fill="#FFFFFF" fill-opacity="0.9"/>
+      <rect x="11" y="12.5" width="4" height="17" rx="1.75" fill="#FFFFFF"/>
+      <rect x="27" y="12.5" width="4" height="17" rx="1.75" fill="#FFFFFF"/>
+      <rect x="7.5" y="15.5" width="2.5" height="11" rx="1.25" fill="#FFFFFF" fill-opacity="0.75"/>
+      <rect x="32" y="15.5" width="2.5" height="11" rx="1.25" fill="#FFFFFF" fill-opacity="0.75"/>
+    </g>
+    <g class="go-train-setup-cog">
+      <circle cx="35" cy="35" r="9.5" fill="#7F1D1D" fill-opacity="0.55"/>
+      <path fill="url(#go-train-gold)" fill-rule="evenodd" d="M33.9 26.5h2.2l.4 2.1a6.7 6.7 0 0 1 1.6.9l2-.8 1.1 1.9-1.6 1.4c.1.5.2 1 .2 1.5s-.1 1-.2 1.5l1.6 1.4-1.1 1.9-2-.8a6.7 6.7 0 0 1-1.6.9l-.4 2.1h-2.2l-.4-2.1a6.7 6.7 0 0 1-1.6-.9l-2 .8-1.1-1.9 1.6-1.4a6.4 6.4 0 0 1 0-3l-1.6-1.4 1.1-1.9 2 .8a6.7 6.7 0 0 1 1.6-.9l.4-2.1ZM35 38a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+    </g>
+  </symbol>
+
+  <!-- Dock icon: Go Train Setup -->
+  <symbol id="icon-go-train-setup-soft" viewBox="0 0 48 48" fill="none">
+    <rect width="48" height="48" rx="12" fill="url(#go-train-bg)" style="opacity: var(--go-train-tile-opacity, 0.9); transition: opacity 0.15s ease"/>
+    <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11.25" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"/>
+    <g opacity="0.95">
+      <rect x="15" y="19.5" width="12" height="3" rx="1" fill="#FFFFFF" fill-opacity="0.9"/>
+      <rect x="11" y="12.5" width="4" height="17" rx="1.75" fill="#FFFFFF"/>
+      <rect x="27" y="12.5" width="4" height="17" rx="1.75" fill="#FFFFFF"/>
+      <rect x="7.5" y="15.5" width="2.5" height="11" rx="1.25" fill="#FFFFFF" fill-opacity="0.75"/>
+      <rect x="32" y="15.5" width="2.5" height="11" rx="1.25" fill="#FFFFFF" fill-opacity="0.75"/>
+    </g>
+    <g class="go-train-setup-cog">
+      <circle cx="35" cy="35" r="9.5" fill="#7F1D1D" fill-opacity="0.55"/>
+      <path fill="url(#go-train-gold)" fill-rule="evenodd" d="M33.9 26.5h2.2l.4 2.1a6.7 6.7 0 0 1 1.6.9l2-.8 1.1 1.9-1.6 1.4c.1.5.2 1 .2 1.5s-.1 1-.2 1.5l1.6 1.4-1.1 1.9-2-.8a6.7 6.7 0 0 1-1.6.9l-.4 2.1h-2.2l-.4-2.1a6.7 6.7 0 0 1-1.6-.9l-2 .8-1.1-1.9 1.6-1.4a6.4 6.4 0 0 1 0-3l-1.6-1.4 1.1-1.9 2 .8a6.7 6.7 0 0 1 1.6-.9l.4-2.1ZM35 38a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+    </g>
+  </symbol>
 </svg>

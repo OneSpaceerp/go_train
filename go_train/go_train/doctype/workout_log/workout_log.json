@@ -1,95 +1,107 @@
 {
  "actions": [],
- "allow_rename": 1,
- "creation": "2026-10-24 00:00:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2026-04-20 00:00:00.000000",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "member",
   "workout",
   "program",
+  "column_break_1",
   "log_date",
   "status",
-  "col1",
   "rpe",
-  "duration",
-  "attachment",
-  "sec_res",
+  "duration_seconds",
+  "section_result",
   "result",
   "details",
-  "sec_sets",
+  "attachment",
+  "attachment_name",
+  "section_sets",
   "set_logs"
  ],
  "fields": [
   {
+   "default": "WLG-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Series",
+   "options": "WLG-.#####"
+  },
+  {
    "fieldname": "member",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Member",
    "options": "Member",
-   "reqd": 1,
-   "in_standard_filter": 1,
-   "in_list_view": 1
+   "reqd": 1
   },
   {
    "fieldname": "workout",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Workout",
    "options": "Workout",
-   "in_standard_filter": 1,
-   "in_list_view": 1
+   "reqd": 1
   },
   {
+   "fetch_from": "workout.program",
    "fieldname": "program",
    "fieldtype": "Link",
-   "label": "Training Program",
-   "options": "Training Program"
+   "in_standard_filter": 1,
+   "label": "Program",
+   "options": "Training Program",
+   "read_only": 1
   },
   {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
    "fieldname": "log_date",
    "fieldtype": "Date",
-   "label": "Date",
-   "default": "Today",
-   "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Log Date",
+   "reqd": 1
   },
   {
+   "default": "Done",
    "fieldname": "status",
    "fieldtype": "Select",
-   "label": "Status",
-   "options": "Done\nMissed",
-   "default": "Done",
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Done\nMissed\nPartial",
+   "reqd": 1
   },
   {
-   "fieldname": "col1",
-   "fieldtype": "Column Break",
-   "label": "Col1"
-  },
-  {
+   "description": "Rate of Perceived Exertion (1–10)",
    "fieldname": "rpe",
    "fieldtype": "Int",
-   "label": "RPE (1-10)"
+   "in_list_view": 1,
+   "label": "RPE"
   },
   {
-   "fieldname": "duration",
-   "fieldtype": "Duration",
-   "label": "Duration"
+   "fieldname": "duration_seconds",
+   "fieldtype": "Int",
+   "label": "Duration (seconds)"
   },
   {
-   "fieldname": "attachment",
-   "fieldtype": "Attach",
-   "label": "Attachment"
-  },
-  {
-   "fieldname": "sec_res",
+   "fieldname": "section_result",
    "fieldtype": "Section Break",
    "label": "Result"
   },
   {
+   "description": "Main score / weights / time (searchable from History)",
    "fieldname": "result",
-   "fieldtype": "Text",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
    "label": "Result"
   },
   {
@@ -98,110 +110,74 @@
    "label": "Notes"
   },
   {
-   "fieldname": "sec_sets",
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Attachment"
+  },
+  {
+   "fieldname": "attachment_name",
+   "fieldtype": "Data",
+   "label": "Attachment File Name"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_sets",
    "fieldtype": "Section Break",
-   "label": "Set Logs"
+   "label": "Set Breakdown"
   },
   {
    "fieldname": "set_logs",
    "fieldtype": "Table",
-   "label": "Set Logs",
+   "label": "Sets",
    "options": "Workout Set Log"
   }
  ],
  "index_web_pages_for_search": 1,
- "istable": 0,
  "links": [],
- "modified": "2026-10-24 00:00:00.000000",
+ "modified": "2026-04-20 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Workout Log",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
-   "read": 1,
-   "write": 1,
    "create": 1,
    "delete": 1,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 1,
-   "export": 1,
    "email": 1,
-   "share": 1,
+   "export": 1,
    "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "System Manager",
-   "import": 0
+   "share": 1,
+   "write": 1
   },
   {
-   "read": 1,
-   "write": 1,
    "create": 1,
    "delete": 1,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
+   "read": 1,
    "report": 1,
-   "export": 1,
-   "email": 1,
-   "share": 1,
-   "print": 1,
    "role": "Gym Manager",
-   "import": 0
+   "write": 1
   },
   {
-   "read": 1,
-   "write": 1,
    "create": 1,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
+   "read": 1,
    "report": 1,
-   "export": 1,
-   "email": 1,
-   "share": 1,
-   "print": 1,
    "role": "Coach",
-   "import": 0
+   "write": 1
   },
   {
-   "read": 1,
-   "write": 0,
-   "create": 0,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 0,
-   "export": 0,
-   "email": 0,
-   "share": 0,
-   "print": 0,
-   "role": "Front Desk",
-   "import": 0
-  },
-  {
-   "read": 1,
-   "write": 1,
    "create": 1,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 0,
-   "export": 0,
-   "email": 0,
-   "share": 0,
-   "print": 0,
+   "read": 1,
    "role": "Member",
-   "import": 0
+   "write": 1
   }
  ],
- "sort_field": "modified",
+ "search_fields": "member,workout,result",
+ "sort_field": "log_date",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1,
- "autoname": "WL-.#####"
+ "track_changes": 1
 }

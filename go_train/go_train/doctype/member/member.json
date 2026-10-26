@@ -1,106 +1,141 @@
 {
  "actions": [],
- "allow_rename": 1,
- "creation": "2026-10-24 00:00:00.000000",
+ "autoname": "naming_series:",
+ "creation": "2026-04-20 00:00:00.000000",
  "doctype": "DocType",
- "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "member_name",
+  "full_name",
   "status",
+  "coach",
+  "column_break_1",
+  "email",
+  "mobile_no",
+  "join_date",
+  "avatar",
+  "section_links",
   "user",
   "customer",
-  "coach",
-  "primary_sport",
-  "col1",
-  "phone",
-  "email",
+  "locale",
+  "theme",
+  "section_profile",
   "gender",
   "date_of_birth",
-  "joined_on",
-  "sec_profile",
-  "goal",
+  "column_break_2",
   "height_cm",
   "weight_kg",
-  "col2",
-  "locale",
-  "notes"
+  "section_notes",
+  "goal",
+  "medical_notes"
  ],
  "fields": [
   {
+   "default": "MEM-.####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Series",
-   "options": "GTM-.#####",
-   "default": "GTM-.#####",
-   "hidden": 1
+   "options": "MEM-.####"
   },
   {
-   "fieldname": "member_name",
+   "fieldname": "full_name",
    "fieldtype": "Data",
-   "label": "Member Name",
-   "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Full Name",
+   "reqd": 1
   },
   {
+   "default": "Active",
    "fieldname": "status",
    "fieldtype": "Select",
-   "label": "Status",
-   "options": "Active\nPaused\nEnded",
-   "default": "Active",
    "in_list_view": 1,
-   "in_standard_filter": 1
-  },
-  {
-   "fieldname": "user",
-   "fieldtype": "Link",
-   "label": "User Account",
-   "options": "User"
-  },
-  {
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer"
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Applicant\nActive\nPaused\nExpired\nCancelled",
+   "reqd": 1
   },
   {
    "fieldname": "coach",
    "fieldtype": "Link",
-   "label": "Coach",
-   "options": "Coach",
-   "in_standard_filter": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assigned Coach",
+   "options": "Coach"
   },
   {
-   "fieldname": "primary_sport",
-   "fieldtype": "Link",
-   "label": "Primary Sport",
-   "options": "Sport",
-   "in_standard_filter": 1
-  },
-  {
-   "fieldname": "col1",
-   "fieldtype": "Column Break",
-   "label": "Col1"
-  },
-  {
-   "fieldname": "phone",
-   "fieldtype": "Data",
-   "label": "Phone",
-   "options": "Phone",
-   "in_list_view": 1
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "email",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Email",
    "options": "Email"
   },
   {
-   "fieldname": "gender",
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "options": "Phone"
+  },
+  {
+   "default": "Today",
+   "fieldname": "join_date",
+   "fieldtype": "Date",
+   "label": "Join Date"
+  },
+  {
+   "fieldname": "avatar",
+   "fieldtype": "Attach Image",
+   "label": "Avatar"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_links",
+   "fieldtype": "Section Break",
+   "label": "Account & Billing Links"
+  },
+  {
+   "description": "Frappe User that signs in to the Go Train mobile app",
+   "fieldname": "user",
    "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "unique": 1
+  },
+  {
+   "description": "ERPNext Customer used for membership invoicing (optional)",
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer"
+  },
+  {
+   "default": "en",
+   "fieldname": "locale",
+   "fieldtype": "Select",
+   "label": "Preferred Language",
+   "options": "en\nar"
+  },
+  {
+   "default": "system",
+   "fieldname": "theme",
+   "fieldtype": "Select",
+   "label": "Preferred Theme",
+   "options": "system\nlight\ndark"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_profile",
+   "fieldtype": "Section Break",
+   "label": "Physical Profile"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
    "label": "Gender",
-   "options": "Gender"
+   "options": "\nMale\nFemale\nOther"
   },
   {
    "fieldname": "date_of_birth",
@@ -108,20 +143,8 @@
    "label": "Date of Birth"
   },
   {
-   "fieldname": "joined_on",
-   "fieldtype": "Date",
-   "label": "Joined On",
-   "default": "Today"
-  },
-  {
-   "fieldname": "sec_profile",
-   "fieldtype": "Section Break",
-   "label": "Profile"
-  },
-  {
-   "fieldname": "goal",
-   "fieldtype": "Small Text",
-   "label": "Goal"
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "height_cm",
@@ -134,118 +157,104 @@
    "label": "Weight (kg)"
   },
   {
-   "fieldname": "col2",
-   "fieldtype": "Column Break",
-   "label": "Col2"
+   "collapsible": 1,
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Goals & Notes"
   },
   {
-   "fieldname": "locale",
-   "fieldtype": "Select",
-   "label": "Preferred Language",
-   "options": "en\nar",
-   "default": "en"
+   "fieldname": "goal",
+   "fieldtype": "Small Text",
+   "label": "Goal"
   },
   {
-   "fieldname": "notes",
-   "fieldtype": "Text",
-   "label": "Notes"
+   "fieldname": "medical_notes",
+   "fieldtype": "Small Text",
+   "label": "Medical / Injury Notes"
   }
  ],
+ "image_field": "avatar",
  "index_web_pages_for_search": 1,
- "istable": 0,
- "links": [],
- "modified": "2026-10-24 00:00:00.000000",
+ "links": [
+  {
+   "link_doctype": "Member Program",
+   "link_fieldname": "member"
+  },
+  {
+   "link_doctype": "Workout Log",
+   "link_fieldname": "member"
+  },
+  {
+   "link_doctype": "Progress Entry",
+   "link_fieldname": "member"
+  },
+  {
+   "link_doctype": "Class Booking",
+   "link_fieldname": "member"
+  },
+  {
+   "link_doctype": "Check In",
+   "link_fieldname": "member"
+  }
+ ],
+ "modified": "2026-04-20 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Member",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
-   "read": 1,
-   "write": 1,
    "create": 1,
    "delete": 1,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 1,
-   "export": 1,
    "email": 1,
-   "share": 1,
+   "export": 1,
    "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "System Manager",
-   "import": 0
+   "share": 1,
+   "write": 1
   },
   {
-   "read": 1,
-   "write": 1,
    "create": 1,
    "delete": 1,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 1,
-   "export": 1,
    "email": 1,
-   "share": 1,
+   "export": 1,
    "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "Gym Manager",
-   "import": 0
-  },
-  {
-   "read": 1,
-   "write": 0,
-   "create": 0,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 0,
-   "export": 0,
-   "email": 0,
-   "share": 0,
-   "print": 0,
-   "role": "Coach",
-   "import": 0
-  },
-  {
-   "read": 1,
-   "write": 1,
-   "create": 1,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 1,
-   "export": 1,
-   "email": 1,
    "share": 1,
-   "print": 1,
-   "role": "Front Desk",
-   "import": 0
+   "write": 1
   },
   {
+   "create": 1,
+   "email": 1,
+   "print": 1,
    "read": 1,
-   "write": 0,
-   "create": 0,
-   "delete": 0,
-   "submit": 0,
-   "cancel": 0,
-   "amend": 0,
-   "report": 0,
-   "export": 0,
-   "email": 0,
-   "share": 0,
-   "print": 0,
+   "report": 1,
+   "role": "Coach",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Front Desk",
+   "write": 1
+  },
+  {
+   "if_owner": 1,
+   "read": 1,
    "role": "Member",
-   "import": 0
+   "write": 1
   }
  ],
- "sort_field": "modified",
+ "search_fields": "full_name,email,mobile_no",
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "track_changes": 1,
- "autoname": "naming_series:",
- "title_field": "member_name",
- "search_fields": "phone,email"
+ "title_field": "full_name",
+ "track_changes": 1
 }

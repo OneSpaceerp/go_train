@@ -6,7 +6,7 @@ import Avatar from '../components/Avatar.vue'
 import StatusPill from '../components/StatusPill.vue'
 import Icon from '../components/Icon.vue'
 import Stopwatch from '../components/Stopwatch.vue'
-import { api } from '../lib/api.js'
+import { api, uploadFile } from '../lib/api.js'
 import { niceDate } from '../lib/format.js'
 import { highlight } from '../lib/search.js'
 
@@ -21,6 +21,7 @@ const rpe = ref(null)
 const duration = ref(null)      // seconds
 const attachment = ref(null)    // { url, name }
 const uploading = ref(false)
+const uploadError = ref('')
 const saving = ref(false)
 const saved = ref(false)
 const showTimer = ref(false)
@@ -61,14 +62,11 @@ async function onFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
   uploading.value = true
+  uploadError.value = ''
   try {
-    const form = new FormData()
-    form.append('file', file)
-    const token = (await import('../lib/session.js')).getToken()
-    const res = await fetch('/api/uploads', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form })
-    if (!res.ok) throw new Error('Upload failed')
-    const data = await res.json()
-    attachment.value = { url: data.url, name: data.name }
+    attachment.value = await uploadFile(file)
+  } catch (err) {
+    uploadError.value = err.message || 'Could not upload file'
   } finally {
     uploading.value = false
   }
@@ -143,6 +141,18 @@ function onFindInput() { matchIdx.value = 0; nextTick(runFind) }
           </div>
           <p class="text-sm text-ink-soft mb-3">{{ niceDate(w.scheduled_on) }}</p>
           <p class="whitespace-pre-line text-ink-soft text-[0.9rem]" dir="auto" v-html="highlight(w.body, find)"></p>
+
+          <!-- Structured prescribed exercises (if present) -->
+          <div v-if="w.exercises?.length" class="mt-4 pt-3 border-t border-line space-y-2">
+            <p class="section-label">Prescribed Movements</p>
+            <div v-for="(ex, i) in w.exercises" :key="i" class="flex items-center justify-between text-sm py-1">
+              <span class="font-medium">{{ ex.exercise }}</span>
+              <span class="text-ink-soft tabular-nums">
+                <template v-if="ex.sets">{{ ex.sets }} × </template>{{ ex.reps || '' }}
+                <template v-if="ex.weight"> @ {{ ex.weight }}</template>
+              </span>
+            </div>
+          </div>
         </article>
 
         <!-- Comments (searchable too) -->
@@ -169,7 +179,7 @@ function onFindInput() { matchIdx.value = 0; nextTick(runFind) }
           <p class="section-label">Log your result</p>
           <button class="btn-soft !h-9" @click="showTimer = true"><Icon name="timer" :size="16" /> Timer</button>
         </div>
-        <textarea v-model="result" rows="3" class="field !h-auto py-3 mb-2" dir="auto" placeholder="e.g. heba 3 kilometers"></textarea>
+        <textarea v-model="result" rows="3" class="field !h-auto py-3 mb-2" dir="auto" placeholder="e.g. 5×5 @ 110 kg or 14:32 Rx"></textarea>
         <textarea v-model="details" rows="2" class="field !h-auto py-3 mb-3" placeholder="Notes (optional)"></textarea>
 
         <!-- RPE -->
@@ -191,6 +201,7 @@ function onFindInput() { matchIdx.value = 0; nextTick(runFind) }
             <input type="file" class="hidden" accept="image/*,video/*,.pdf" @change="onFile" />
           </label>
         </div>
+        <p v-if="uploadError" class="text-bad text-xs mb-2">{{ uploadError }}</p>
 
         <!-- Attachment preview -->
         <div v-if="attachment" class="mb-3">

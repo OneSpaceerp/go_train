@@ -1,12 +1,23 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './router.js'
-import { applyTheme, initFromBoot } from './lib/session.js'
+import { applyTheme, applyLocale, initFromBoot, setUser } from './lib/session.js'
+import { api } from './lib/api.js'
+import { dismissSplash } from './lib/splash.js'
 import './style.css'
 
-// Auth is the Frappe session. In production the bootloader (www/gotrain.py)
-// injects #go-train-boot with the logged-in user; in Vite dev that's literal
-// Jinja, so we fall back to asking Frappe who is logged in.
+// Register the PWA service worker served from go_train.api.pwa.sw with
+// Service-Worker-Allowed: /gotrain so it controls /gotrain and all subroutes.
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/api/method/go_train.api.pwa.sw', { scope: '/gotrain' })
+        .catch(() => {})
+    })
+  }
+}
+
 async function start() {
   let user = null
   let fullName = ''
@@ -26,15 +37,22 @@ async function start() {
     } catch { /* offline / not logged in */ }
   }
 
-  // If signed in, seed the session; if not, mount anyway and let the router
-  // show the in-app Go Train login screen.
-  if (user) initFromBoot({ user, full_name: fullName })
-  applyTheme()
-  createApp(App).use(router).mount('#app')
+  // If signed in, seed the session and hydrate full profile/coach context.
+  if (user) {
+    initFromBoot({ user, full_name: fullName })
+    try {
+      const me = await api.get('/auth/me')
+      if (me?.user) setUser(me.user)
+    } catch { /* offline fallback uses cached user */ }
+  }
 
-  // Fade out the launch screen once the app is up.
-  const splash = document.querySelector('[data-splash]')
-  if (splash) { splash.classList.add('splash-out'); setTimeout(() => splash.remove(), 600) }
+  applyTheme()
+  applyLocale()
+  createApp(App).use(router).mount('#app')
+  registerServiceWorker()
+
+  // Let the multi-stage launch choreography finish before revealing the app.
+  dismissSplash()
 }
 
 start()

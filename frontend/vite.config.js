@@ -1,77 +1,40 @@
-import path from 'node:path'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Frappe serves <app>/public at /assets/<app>/, so the built bundle lives at
-// /assets/go_train/frontend/ while the app itself is routed at /gotrain.
-const BASE = '/assets/go_train/frontend/'
-
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? BASE : '/',
+// Built into go_train/public/frontend so Frappe serves the bundle under
+// /assets/go_train/frontend/*, while copy-entry.js copies index.html to
+// go_train/www/gotrain.html (served at /gotrain and /gotrain/*).
+export default defineConfig({
+  base: '/assets/go_train/frontend/',
   plugins: [
-    // Leave absolute /assets/go_train/... URLs in templates as-is (Frappe serves them);
-    // Vite must not try to resolve them as bundled modules.
-    vue({ template: { transformAssetUrls: false } }),
+    vue(),
     VitePWA({
-      strategies: 'generateSW',
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      injectRegister: false,
       manifest: {
         id: '/gotrain',
-        name: 'Go Train',
+        name: 'Go Train — Athlete & Coach',
         short_name: 'Go Train',
-        description: 'Programs, workouts, classes and progress for your gym.',
+        description: 'Programs, workouts, class booking, and progress tracking on ERPNext.',
         start_url: '/gotrain',
         scope: '/gotrain',
         display: 'standalone',
-        orientation: 'any',
-        background_color: '#F4F6FA',
-        theme_color: '#FB5A5F',
-        lang: 'en',
-        dir: 'auto',
-        categories: ['health', 'fitness', 'sports'],
+        orientation: 'portrait',
+        background_color: '#070510',
+        theme_color: '#F23D46',
         icons: [
-          { src: '/assets/go_train/manifest/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/assets/go_train/manifest/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/assets/go_train/manifest/icon-192-maskable.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: '/assets/go_train/manifest/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/assets/go_train/images/go_train_logo.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,woff2,png,svg}'],
-        // The Frappe-rendered bootloader page is never precached.
         navigateFallback: null,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/method/go_train.'),
-            handler: 'NetworkFirst',
-            options: { cacheName: 'go-train-api', networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 } },
-          },
-        ],
+        globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest}'],
       },
-      devOptions: { enabled: false },
     }),
   ],
-  resolve: { alias: { '@': path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), 'src') } },
   build: {
     outDir: '../go_train/public/frontend',
     emptyOutDir: true,
-    target: 'es2020',
-    sourcemap: false,
   },
-  // Dev: forward everything Frappe owns to the bench so cookies, CSRF and the
-  // whitelisted API work while the SPA is served by Vite.
-  server: {
-    port: 8080,
-    allowedHosts: true,
-    proxy: {
-      '^/(api|assets|files|private|app)': {
-        target: process.env.FRAPPE_SITE_URL || 'http://localhost:8000',
-        changeOrigin: true,
-        ws: true,
-      },
-    },
-  },
-}))
+})

@@ -1,54 +1,35 @@
 app_name = "go_train"
 app_title = "Go Train"
-app_publisher = "nsdLabs"
-app_description = (
-    "Multi-sport fitness-space management (gym, CrossFit, calisthenics and more) "
-    "and the Go Train PWA, on Frappe/ERPNext v16."
-)
-app_email = "info@nsd-eg.com"
+app_publisher = "Go Train"
+app_description = "Gym, coaching, workout programming, and athlete progress tracking on ERPNext"
+app_email = "support@gotrain.app"
 app_license = "mit"
-app_icon_url = "/assets/go_train/images/go_train_logo.png"
-app_logo_url = "/assets/go_train/images/go_train_logo.png"
+app_home = "/desk/go-train"
 
-# nsdLabs is a brand under Nest Software Development.
-required_apps = ["frappe/erpnext"]
+# Required apps
+required_apps = ["frappe"]
 
-# Dual-tone module icons for the v16 desk dock and sidebar headers.
-app_include_icons = ["/assets/go_train/icons/module-icons.svg"]
+# Desk icon sprite (duotone + soft variants used by Workspace Sidebar and Dock)
+app_include_icons = [
+	"/assets/go_train/icons/module-icons.svg",
+]
 
-# The installable PWA lives at /gotrain (served by www/gotrain.py + gotrain.html).
-app_home = "/gotrain"
-
-# ---------------------------------------------------------------------------
-# App launcher — the Go Train tile opens the Desk workspace (the staff/management
-# app). The athlete PWA is reached directly at /gotrain (app_home).
-# ---------------------------------------------------------------------------
+# Apps screen (Frappe v16+)
 add_to_apps_screen = [
-    {
-        "name": "go_train",
-        "logo": "/assets/go_train/images/go_train_logo.png",
-        "title": "Go Train",
-        "route": "/app/go-train",
-        "has_permission": "go_train.api.pwa.check_app_permission",
-    }
+	{
+		"name": "go_train",
+		"logo": "/assets/go_train/images/go_train_logo.png",
+		"title": "Go Train",
+		"route": app_home,
+		"has_permission": "go_train.api.pwa.check_app_permission",
+	}
 ]
 
-# ---------------------------------------------------------------------------
-# Website routing — every client-side route under /gotrain is served by the
-# single bootloader page, so the SPA owns its own navigation.
-# ---------------------------------------------------------------------------
+# Route all /gotrain/* subpaths to the single-page athlete & coach PWA
 website_route_rules = [
-    {"from_route": "/gotrain/<path:app_path>", "to_route": "gotrain"},
+	{"from_route": "/gotrain/<path:app_path>", "to_route": "gotrain"},
 ]
 
-# ---------------------------------------------------------------------------
-# Installation — create roles and seed starter data (idempotent).
-# ---------------------------------------------------------------------------
+# Seed gym roles and starter reference data on install & migrate
 after_install = "go_train.setup.install.after_install"
 after_migrate = "go_train.setup.install.after_install"
-
-# ---------------------------------------------------------------------------
-# Document events / fixtures — added as the app grows.
-# ---------------------------------------------------------------------------
-# doc_events = {}
-# fixtures = []

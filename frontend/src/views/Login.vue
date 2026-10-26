@@ -1,7 +1,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { initFromBoot } from '../lib/session.js'
+import { initFromBoot, setUser } from '../lib/session.js'
+import { api } from '../lib/api.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +25,10 @@ async function submit() {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.message || 'Wrong email or password')
     initFromBoot({ user: email.value, full_name: data.full_name || '' })
+    try {
+      const me = await api.get('/auth/me')
+      if (me?.user) setUser(me.user)
+    } catch {}
     router.replace(route.query['redirect-to'] || '/')
   } catch (e) {
     error.value = e.message || 'Could not sign in'
@@ -36,7 +41,7 @@ async function submit() {
 <template>
   <div class="min-h-full flex flex-col justify-center px-6 py-10 mx-auto w-full max-w-[26rem]">
     <div class="flex flex-col items-center mb-8">
-      <img src="/assets/go_train/images/go_train_logo.png" alt="" class="w-20 h-20 rounded-[1.25rem] shadow-card" />
+      <img :src="'/assets/go_train/images/go_train_logo.png'" alt="" class="w-20 h-20 rounded-[1.25rem] shadow-card" />
       <h1 class="mt-4 text-2xl font-semibold">Go Train</h1>
       <p class="text-ink-soft text-sm mt-1">Train. Track. Progress.</p>
     </div>

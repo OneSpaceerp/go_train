@@ -15,13 +15,19 @@ const programs = ref([])
 const activeProgram = ref(null)
 const workouts = ref([])
 const calendar = ref([])
+const classInfo = ref(null)
+const checkingIn = ref(false)
 const loading = ref(true)
 const expanded = ref(null)
 const selectedDay = ref(dayjs().format('YYYY-MM-DD'))
 
 onMounted(async () => {
   try {
-    ;[programs.value, calendar.value] = await Promise.all([api.get('/programs'), api.get('/calendar')])
+    ;[programs.value, calendar.value, classInfo.value] = await Promise.all([
+      api.get('/programs'),
+      api.get('/calendar'),
+      api.get('/classes').catch(() => null),
+    ])
     activeProgram.value = programs.value.find((p) => p.is_active) || programs.value[0]
     if (activeProgram.value) {
       workouts.value = await api.get(`/programs/${activeProgram.value.id}/workouts`)
@@ -31,6 +37,17 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+async function quickCheckIn() {
+  if (checkingIn.value || classInfo.value?.checked_in_today) return
+  checkingIn.value = true
+  try {
+    await api.post('/checkin', {})
+    if (classInfo.value) classInfo.value.checked_in_today = true
+  } finally {
+    checkingIn.value = false
+  }
+}
 
 // Workouts scheduled on the picked calendar day (across all programs).
 const dayWorkoutIds = computed(() =>
@@ -55,8 +72,31 @@ function onPick(date) {
         <p class="text-xs text-ink-soft">Welcome,</p>
         <p class="font-semibold truncate">{{ session.user?.full_name }}</p>
       </div>
+      <RouterLink to="/classes" class="icon-btn bg-surface-sunk" aria-label="Classes & Check-in"><Icon name="calendar" :size="20" /></RouterLink>
       <RouterLink to="/notifications" class="icon-btn bg-surface-sunk" aria-label="Notifications"><Icon name="bell" :size="20" /></RouterLink>
       <RouterLink to="/history" class="icon-btn bg-surface-sunk" aria-label="History"><Icon name="history" :size="20" /></RouterLink>
+    </div>
+
+    <!-- Quick Check-in & Classes strip -->
+    <div v-if="classInfo" class="card p-3.5 mb-4 flex items-center justify-between gap-3">
+      <RouterLink to="/classes" class="flex items-center gap-3 flex-1 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0">
+          <Icon name="calendar" :size="20" />
+        </div>
+        <div class="min-w-0">
+          <p class="font-semibold text-sm truncate">Classes &amp; Check-in</p>
+          <p class="text-xs text-ink-soft truncate">
+            {{ classInfo.sessions?.length ? `${classInfo.sessions.length} upcoming session${classInfo.sessions.length === 1 ? '' : 's'}` : 'Floor check-in & schedule' }}
+          </p>
+        </div>
+      </RouterLink>
+      <button v-if="classInfo.can_self_checkin" class="btn-soft !h-9 !px-3.5 text-xs shrink-0"
+        :class="classInfo.checked_in_today ? '!bg-ok/15 !text-ok' : ''"
+        :disabled="checkingIn || classInfo.checked_in_today"
+        @click="quickCheckIn">
+        <Icon name="check" :size="15" />
+        {{ classInfo.checked_in_today ? 'Checked in' : checkingIn ? 'Checking in…' : 'Check in' }}
+      </button>
     </div>
 
     <!-- Month calendar -->

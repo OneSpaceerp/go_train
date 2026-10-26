@@ -1,0 +1,22 @@
+{
+ "app": "go_train",
+ "creation": "2026-04-20 12:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Desktop Icon",
+ "hidden": 0,
+ "icon": "",
+ "icon_type": "Link",
+ "idx": 0,
+ "label": "Go Train Setup",
+ "link_to": "Go Train Setup",
+ "link_type": "Workspace Sidebar",
+ "logo_url": "/assets/go_train/images/go_train_logo.png",
+ "modified": "2026-04-20 12:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Go Train Setup",
+ "owner": "Administrator",
+ "parent_icon": "Go Train",
+ "restrict_removal": 0,
+ "roles": [],
+ "standard": 1
+}

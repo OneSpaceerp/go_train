@@ -12,6 +12,7 @@ const routes = [
   { path: '/profile', component: () => import('./views/Profile.vue'), meta: { tab: 'profile' } },
 
   // Deeper athlete screens
+  { path: '/classes', component: () => import('./views/Classes.vue') },
   { path: '/history', component: () => import('./views/History.vue') },
   { path: '/programs', component: () => import('./views/Programs.vue') },
   { path: '/programs/:id', component: () => import('./views/ProgramDetail.vue') },
