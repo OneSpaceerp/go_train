@@ -5,6 +5,13 @@
 // Frappe session cookie + CSRF token for auth, and normalizes Frappe field names
 // (name, scheduled_date, log_date, program_name…) to the keys the screens expect.
 import { clearSession } from './session.js'
+import {
+  readCache,
+  writeCache,
+  enqueueOfflineMutation,
+  flushOfflineQueue,
+  setUnreadBadge,
+} from './pwa.js'
 
 export function csrfToken() {
   try {
@@ -224,9 +231,15 @@ async function dispatch(httpMethod, rawPath, body) {
   }
 
   // Notifications
-  if (path === '/notifications' && httpMethod === 'GET') return frappe('get_notifications')
+  if (path === '/notifications' && httpMethod === 'GET') {
+    const items = await frappe('get_notifications')
+    setUnreadBadge((items || []).filter((n) => !n.read_at).length)
+    return items
+  }
   if (path === '/notifications/read' && httpMethod === 'POST') {
-    return frappe('mark_notifications_read', { httpMethod: 'POST' })
+    const res = await frappe('mark_notifications_read', { httpMethod: 'POST' })
+    setUnreadBadge(0)
+    return res
   }
 
   // Marketplace, Promos & Gym Team
@@ -265,7 +278,37 @@ async function dispatch(httpMethod, rawPath, body) {
 }
 
 export const api = {
-  get: (p) => dispatch('GET', p),
-  post: (p, b) => dispatch('POST', p, b ?? {}),
+  cached: (p) => readCache(p),
+  get: async (p) => {
+    try {
+      const data = await dispatch('GET', p)
+      writeCache(p, data)
+      return data
+    } catch (err) {
+      const cached = readCache(p)
+      if (cached !== null) return cached
+      throw err
+    }
+  },
+  post: async (p, b) => {
+    const body = b ?? {}
+    try {
+      return await dispatch('POST', p, body)
+    } catch (err) {
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
+      const queueable = /^\/workouts\/[^/]+\/log$/.test(p) || p === '/tracking' || p === '/checkin'
+      if (isOffline && queueable) {
+        enqueueOfflineMutation({ method: 'POST', path: p, body })
+        return { ok: true, queued: true }
+      }
+      throw err
+    }
+  },
   patch: (p, b) => dispatch('PATCH', p, b ?? {}),
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    flushOfflineQueue((item) => dispatch(item.method, item.path, item.body))
+  })
 }

@@ -1,9 +1,11 @@
 <script setup>
-// Small inline-SVG icon set (stroke icons). Keeps the bundle free of an icon lib.
+// Crisp 24x24 inline stroke SVG icon set. Directional icons automatically mirror in RTL.
+import { computed } from 'vue'
+
 const P = {
   train: 'M2 10h2V8h2v8H4v-2H2zM6 7h3v10H6zM9 11h6v2H9zM15 7h3v10h-3zM18 8h2v2h2v4h-2v2h-2z',
   track: 'M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-9',
-  message: 'M4 5h16v11H9l-5 4z',
+  message: 'M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1Z',
   profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM5 20a7 7 0 0 1 14 0',
   clients: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2 20a7 7 0 0 1 13 0M16 4a3.5 3.5 0 0 1 0 7M22 20a7 7 0 0 0-5-6.7',
   programs: 'M5 4h11l3 3v13H5zM8 10h8M8 14h8M8 18h5',
@@ -28,13 +30,41 @@ const P = {
   globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
   sun: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10ZM12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19',
   lock: 'M6 10V8a6 6 0 0 1 12 0v2M5 10h14v10H5zM12 14v3',
+  flame: 'M12 3c2 3.5 5 6 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4.5 2.5-6 1 1.5 1.5 2.5 1.5 2.5S11.5 6 12 3Z',
+  trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM4 5h3v4a3 3 0 0 1-3-3V5ZM17 5h3v1a3 3 0 0 1-3 3V5Z',
+  sparkles: 'm12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8L12 3ZM5 17l.9 2.1L8 20l-2.1.9L5 23l-.9-2.1L2 20l2.1-.9L5 17ZM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15Z',
+  download: 'M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
+  wifiOff: 'M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.8a10 10 0 0 1 5.2-2.7M19 12.8a10 10 0 0 0-3-2M2 8.8a15 15 0 0 1 4.1-2.8M22 8.8A15 15 0 0 0 10.6 5M12 20h.01',
+  refresh: 'M21 12a9 9 0 1 1-2.64-6.36L21 8M21 3v5h-5',
+  play: 'm7 5 12 7-12 7V5Z',
+  pause: 'M8 5h3v14H8zM13 5h3v14h-3z',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3',
+  qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h3v3h-3zM17 17h3v3h-3zM14 20h3',
 }
-const props = defineProps({ name: String, size: { type: [Number, String], default: 22 } })
+
+const DIRECTIONAL = new Set(['back', 'chevron', 'send', 'logout'])
+
+const props = defineProps({
+  name: String,
+  size: { type: [Number, String], default: 22 },
+})
+
+const isDirectional = computed(() => DIRECTIONAL.has(props.name))
 </script>
 
 <template>
-  <svg :width="size" :height="size" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <svg
+    :width="size"
+    :height="size"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    :class="isDirectional ? 'icon-flip' : ''"
+    aria-hidden="true"
+  >
     <path :d="P[name]" />
   </svg>
 </template>

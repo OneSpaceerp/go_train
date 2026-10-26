@@ -10,3 +10,4 @@ frontend/dev-dist/
 
 .DS_Store
 *.log
+.agents/

@@ -7,12 +7,12 @@ const routes = [
 
   // Athlete tabs
   { path: '/', component: () => import('./views/Train.vue'), meta: { tab: 'train' } },
+  { path: '/classes', component: () => import('./views/Classes.vue'), meta: { tab: 'classes' } },
   { path: '/track', component: () => import('./views/Track.vue'), meta: { tab: 'track' } },
   { path: '/messages', component: () => import('./views/Messages.vue'), meta: { tab: 'messages' } },
   { path: '/profile', component: () => import('./views/Profile.vue'), meta: { tab: 'profile' } },
 
   // Deeper athlete screens
-  { path: '/classes', component: () => import('./views/Classes.vue') },
   { path: '/history', component: () => import('./views/History.vue') },
   { path: '/programs', component: () => import('./views/Programs.vue') },
   { path: '/programs/:id', component: () => import('./views/ProgramDetail.vue') },
@@ -29,7 +29,13 @@ const routes = [
   { path: '/coach/programs', component: () => import('./views/CoachPrograms.vue'), meta: { tab: 'programs', coach: true } },
 ]
 
-export const router = createRouter({ history: createWebHistory('/gotrain'), routes })
+export const router = createRouter({
+  history: createWebHistory('/gotrain'),
+  routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition || { top: 0 }
+  },
+})
 
 router.beforeEach((to) => {
   if (to.meta.public) return true

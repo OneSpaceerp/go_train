@@ -1,0 +1,248 @@
+// Reactive bilingual dictionary (English & Arabic) for the Go Train PWA.
+// Reads the current user's locale from `session.user.locale` so switching
+// language in Profile updates every screen instantaneously without reload.
+import { computed } from 'vue'
+import { session } from './session.js'
+
+const DICT = {
+  en: {
+    // Tabs & Navigation
+    'tab.train': 'Train',
+    'tab.classes': 'Classes',
+    'tab.track': 'Track',
+    'tab.messages': 'Messages',
+    'tab.profile': 'Profile',
+    'tab.clients': 'Clients',
+    'tab.programs': 'Programs',
+    'nav.back': 'Back',
+    'nav.cancel': 'Cancel',
+    'nav.done': 'Done',
+    'nav.close': 'Close',
+    'nav.save': 'Save',
+    'nav.today': 'Today',
+
+    // Offline & Install
+    'pwa.offline': 'Offline mode · showing cached data',
+    'pwa.queued': 'Saved offline · will sync when online',
+    'pwa.installTitle': 'Install Go Train App',
+    'pwa.installSub': 'Add to your home screen for instant launch & offline workouts',
+    'pwa.installBtn': 'Install',
+    'pwa.iosGuideTitle': 'Add Go Train to Home Screen',
+    'pwa.iosStep1': '1. Tap the Share button in Safari’s toolbar below.',
+    'pwa.iosStep2': '2. Scroll down and tap "Add to Home Screen".',
+    'pwa.iosStep3': '3. Tap "Add" in the top-right corner to launch full-screen.',
+
+    // Train Home
+    'train.greeting.morning': 'Good morning',
+    'train.greeting.afternoon': 'Good afternoon',
+    'train.greeting.evening': 'Good evening',
+    'train.todayFocus': "Today's Session",
+    'train.restDay': 'Active Recovery / Rest Day',
+    'train.restDaySub': 'No workout scheduled for this date. Explore classes or review your programs below.',
+    'train.startWorkout': 'Start Workout',
+    'train.reviewLog': 'Review Logged Result',
+    'train.checkInFloor': 'Check In',
+    'train.checkedIn': 'Checked In ✓',
+    'train.monthCalendar': 'Full Month Calendar',
+    'train.hideCalendar': 'Compact Week View',
+    'train.scheduledFor': 'Scheduled for',
+    'train.yourPrograms': 'Your Training Programs',
+    'train.QuickExplore': 'Explore & Tools',
+    'train.classesTitle': 'Classes & Check-In',
+    'train.classesSub': 'Book sessions & floor check-in',
+    'train.exercisesTitle': 'Exercise Library',
+    'train.exercisesSub': 'Movements, cues & demos',
+    'train.marketplaceTitle': 'Program Store',
+    'train.marketplaceSub': 'Browse training tracks',
+    'train.historyTitle': 'Workout History',
+    'train.historySub': 'Search past logs & PRs',
+
+    // Statuses
+    'status.done': 'Done',
+    'status.missed': 'Missed',
+    'status.upcoming': 'Upcoming',
+    'status.partial': 'Partial',
+
+    // Workout Detail
+    'workout.prescription': 'Workout Prescription',
+    'workout.InteractiveSets': 'Set-by-Set Tracker',
+    'workout.addSet': '+ Add Set',
+    'workout.set': 'Set',
+    'workout.exercise': 'Movement',
+    'workout.weight': 'kg / lb',
+    'workout.reps': 'Reps',
+    'workout.restTimer': 'Rest Timer',
+    'workout.skipRest': 'Skip',
+    'workout.yourResult': 'Overall Score & Notes',
+    'workout.resultPlaceholder': 'Summary score (e.g. 12:34 Rx, 5 rounds + 8 reps, 100 kgx5)',
+    'workout.detailsPlaceholder': 'Movement breakdown, scaling, how it felt…',
+    'workout.rpeLabel': 'Rate of Perceived Exertion (RPE)',
+    'workout.timerBtn': 'Timer',
+    'workout.attachBtn': 'Attach Photo / Video',
+    'workout.uploading': 'Uploading…',
+    'workout.saveResult': 'Complete & Save Workout',
+    'workout.updateResult': 'Update Workout Log',
+    'workout.savedToast': 'Workout saved to your training log',
+    'workout.markMissed': 'Mark as Missed',
+    'workout.leaderboard': 'Class Leaderboard & Results',
+    'workout.comments': 'Coach & Athlete Notes',
+    'workout.commentPlaceholder': 'Ask your coach or leave a note…',
+
+    // Classes
+    'classes.floorCheckIn': 'Gym Floor Check-In',
+    'classes.floorSub': 'Arrived at the facility? Tap to register your attendance.',
+    'classes.checkInNow': 'Check In Now',
+    'classes.filterAll': 'All Upcoming',
+    'classes.filterToday': 'Today',
+    'classes.filterBooked': 'My Bookings',
+    'classes.bookSpot': 'Book Spot',
+    'classes.cancelSpot': 'Cancel Booking',
+    'classes.full': 'Class Full',
+    'classes.bookedBadge': 'Booked',
+    'classes.spotsLeft': 'spots left',
+
+    // Track
+    'track.consistency': '30-Day Consistency',
+    'track.completed': 'Completed',
+    'track.missed': 'Missed',
+    'track.avgRpe': 'Avg RPE',
+    'track.prsAndMetrics': 'Personal Records & Benchmarks',
+    'track.logPr': 'Log PR',
+    'track.emptyMetrics': 'No benchmarks logged yet. Tap "Log PR" to record your first lift or time.',
+
+    // Profile
+    'profile.roleMode': 'Active Workspace Mode',
+    'profile.clientView': 'Athlete View',
+    'profile.coachView': 'Coach View',
+    'profile.exploreGym': 'Gym & Community',
+    'profile.preferences': 'Preferences & Account',
+    'profile.language': 'Language / اللغة',
+    'profile.theme': 'Appearance',
+    'profile.changePassword': 'Change Password',
+    'profile.signOut': 'Sign Out',
+  },
+  ar: {
+    // Tabs & Navigation
+    'tab.train': 'التدريب',
+    'tab.classes': 'الحصص',
+    'tab.track': 'التقدم',
+    'tab.messages': 'الرسائل',
+    'tab.profile': 'حسابي',
+    'tab.clients': 'المتدربين',
+    'tab.programs': 'البرامج',
+    'nav.back': 'رجوع',
+    'nav.cancel': 'إلغاء',
+    'nav.done': 'تم',
+    'nav.close': 'إغلاق',
+    'nav.save': 'حفظ',
+    'nav.today': 'اليوم',
+
+    // Offline & Install
+    'pwa.offline': 'وضع عدم الاتصال · يتم عرض البيانات المحفوظة',
+    'pwa.queued': 'تم الحفظ محلياً · ستتم المزامنة عند الاتصال',
+    'pwa.installTitle': 'تثبيت تطبيق Go Train',
+    'pwa.installSub': 'أضف التطبيق إلى الشاشة الرئيسية للوصول السريع والعمل بدون إنترنت',
+    'pwa.installBtn': 'تثبيت',
+    'pwa.iosGuideTitle': 'إضافة Go Train للشاشة الرئيسية',
+    'pwa.iosStep1': '١. اضغط على زر المشاركة (Share) في شريط سفاري بالأسفل.',
+    'pwa.iosStep2': '٢. مرّر للأسفل واختر "إضافة إلى الشاشة الرئيسية".',
+    'pwa.iosStep3': '٣. اضغط "إضافة" في الأعلى لتشغيل التطبيق بملء الشاشة.',
+
+    // Train Home
+    'train.greeting.morning': 'صباح الخير',
+    'train.greeting.afternoon': 'مساء الخير',
+    'train.greeting.evening': 'مساء النور',
+    'train.todayFocus': 'تمرين اليوم',
+    'train.restDay': 'يوم راحة واستشفاء',
+    'train.restDaySub': 'لا يوجد تمرين مجدول لهذا اليوم. استكشف الحصص التدريبية أو برامجك أدناه.',
+    'train.startWorkout': 'ابدأ التمرين',
+    'train.reviewLog': 'مراجعة النتيجة المسجلة',
+    'train.checkInFloor': 'تسجيل حضور',
+    'train.checkedIn': 'تم التسجيل ✓',
+    'train.monthCalendar': 'عرض التقويم الشهري',
+    'train.hideCalendar': 'عرض الأسبوع المختصر',
+    'train.scheduledFor': 'التمارين المجدولة ليوم',
+    'train.yourPrograms': 'برامجك التدريبية',
+    'train.QuickExplore': 'الأدوات والاستكشاف',
+    'train.classesTitle': 'الحصص وتسجيل الحضور',
+    'train.classesSub': 'حجز الحصص وتأكيد الحضور بالنادي',
+    'train.exercisesTitle': 'مكتبة التمارين',
+    'train.exercisesSub': 'الحركات، الشرح والفيديو',
+    'train.marketplaceTitle': 'متجر البرامج',
+    'train.marketplaceSub': 'تصفح الخطط التدريبية',
+    'train.historyTitle': 'سجل التمارين',
+    'train.historySub': 'ابحث في نتائجك السابقة',
+
+    // Statuses
+    'status.done': 'مكتمل',
+    'status.missed': 'فائت',
+    'status.upcoming': 'قادم',
+    'status.partial': 'جزئي',
+
+    // Workout Detail
+    'workout.prescription': 'تفاصيل التمرين',
+    'workout.InteractiveSets': 'تسجيل الجولات والأوزان',
+    'workout.addSet': '+ جولة جديدة',
+    'workout.set': 'جولة',
+    'workout.exercise': 'التمرين',
+    'workout.weight': 'الوزن',
+    'workout.reps': 'التكرار',
+    'workout.restTimer': 'مؤقت الراحة',
+    'workout.skipRest': 'تخطي',
+    'workout.yourResult': 'النتيجة الإجمالية والملاحظات',
+    'workout.resultPlaceholder': 'النتيجة النهائية (مثال: 12:34 Rx أو 100 كجم × 5)',
+    'workout.detailsPlaceholder': 'تفاصيل الأوزان أو ملاحظاتك حول التمرين…',
+    'workout.rpeLabel': 'مستوى الجهد المبذول (RPE)',
+    'workout.timerBtn': 'المؤقت',
+    'workout.attachBtn': 'إرفاق صورة / فيديو',
+    'workout.uploading': 'جاري الرفع…',
+    'workout.saveResult': 'إتمام وحفظ التمرين',
+    'workout.updateResult': 'تحديث النتيجة',
+    'workout.savedToast': 'تم حفظ نتيجة التمرين بنجاح',
+    'workout.markMissed': 'تحديد كفائت',
+    'workout.leaderboard': 'نتائج المتدربين',
+    'workout.comments': 'ملاحظات المدرب والمتدربين',
+    'workout.commentPlaceholder': 'اكتب تعليقاً أو سؤالاً لمدربك…',
+
+    // Classes
+    'classes.floorCheckIn': 'تسجيل دخول النادي',
+    'classes.floorSub': 'وصلت إلى الجيم؟ اضغط لتسجيل حضورك اليوم.',
+    'classes.checkInNow': 'تسجيل الحضور الآن',
+    'classes.filterAll': 'كل الحصص',
+    'classes.filterToday': 'اليوم',
+    'classes.filterBooked': 'حجوزاتي',
+    'classes.bookSpot': 'حجز مقعد',
+    'classes.cancelSpot': 'إلغاء الحجز',
+    'classes.full': 'مكتمل العدد',
+    'classes.bookedBadge': 'محجوز',
+    'classes.spotsLeft': 'مقاعد متبقية',
+
+    // Track
+    'track.consistency': 'الالتزام خلال ٣٠ يوماً',
+    'track.completed': 'مكتمل',
+    'track.missed': 'فائت',
+    'track.avgRpe': 'متوسط الجهد',
+    'track.prsAndMetrics': 'الأرقام القياسية (PRs)',
+    'track.logPr': 'تسجيل رقم قياسي',
+    'track.emptyMetrics': 'لم تقم بتسجيل أرقام قياسية بعد. اضغط "تسجيل رقم قياسي" للبدء.',
+
+    // Profile
+    'profile.roleMode': 'وضع الاستخدام الحالي',
+    'profile.clientView': 'واجهة المتدرب',
+    'profile.coachView': 'واجهة المدرب',
+    'profile.exploreGym': 'النادي والمجتمع',
+    'profile.preferences': 'الإعدادات والحساب',
+    'profile.language': 'اللغة / Language',
+    'profile.theme': 'المظهر',
+    'profile.changePassword': 'تغيير كلمة المرور',
+    'profile.signOut': 'تسجيل الخروج',
+  },
+}
+
+export const currentLocale = computed(() => (session.user?.locale === 'ar' ? 'ar' : 'en'))
+export const isRtl = computed(() => currentLocale.value === 'ar')
+
+export function t(key, fallback) {
+  const loc = currentLocale.value
+  return DICT[loc]?.[key] ?? DICT.en[key] ?? fallback ?? key
+}
