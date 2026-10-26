@@ -11,7 +11,7 @@ import json
 import os
 import frappe
 from frappe import _
-from frappe.utils import add_days, cint, flt, getdate, now_datetime, today
+from frappe.utils import cint, flt, now_datetime, today
 from werkzeug.wrappers import Response
 
 
@@ -61,11 +61,7 @@ def _get_coach_for_user(user: str | None = None) -> str | None:
 	user = user or frappe.session.user
 	if user == "Guest":
 		return None
-	coach = frappe.db.get_value("Coach", {"user": user, "active": 1}, "name")
-	if coach:
-		return coach
-	email = frappe.db.get_value("User", user, "email") or user
-	return frappe.db.get_value("Coach", {"email": email, "active": 1}, "name")
+	return frappe.db.get_value("Coach", {"user": user, "is_active": 1}, "name")
 
 
 def _is_staff_or_coach(user: str | None = None) -> bool:
@@ -117,11 +113,11 @@ def _get_settings() -> dict:
 	try:
 		s = frappe.get_single("Go Train Settings")
 		return {
-			"gym_name": s.gym_name or "Go Train Gym",
-			"default_currency": s.default_currency or "USD",
-			"default_weight_unit": s.default_weight_unit or "kg",
-			"members_can_self_book": cint(s.members_can_self_book),
-			"members_can_self_checkin": cint(s.members_can_self_checkin),
+			"gym_name": getattr(s, "gym_name", None) or "Go Train Gym",
+			"default_currency": getattr(s, "default_currency", None) or "USD",
+			"default_weight_unit": getattr(s, "default_weight_unit", None) or "kg",
+			"members_can_self_book": cint(getattr(s, "members_can_self_book", 1)),
+			"members_can_self_checkin": cint(getattr(s, "members_can_self_checkin", 1)),
 		}
 	except Exception:
 		return {
@@ -166,9 +162,16 @@ def boot():
 	is_coach_user = _is_staff_or_coach()
 	coach_info = None
 	if m.get("coach"):
-		coach_info = frappe.db.get_value(
-			"Coach", m.coach, ["name", "full_name", "specialty", "avatar", "email"], as_dict=True
+		c_doc = frappe.db.get_value(
+			"Coach", m.coach, ["name", "coach_name", "sport", "phone"], as_dict=True
 		)
+		if c_doc:
+			coach_info = {
+				"name": c_doc.name,
+				"full_name": c_doc.coach_name,
+				"specialty": c_doc.sport or "",
+				"phone": c_doc.phone or "",
+			}
 
 	return {
 		"user": frappe.session.user,
@@ -301,11 +304,11 @@ def get_programs():
 	assigned = frappe.get_all(
 		"Member Program",
 		filters={"member": member},
-		fields=["name", "program", "status", "start_date", "end_date"],
+		fields=["name", "program", "is_active", "start_date"],
 		order_by="start_date desc",
 	)
 	program_names = [a.program for a in assigned]
-	status_by_program = {a.program: a.status for a in assigned}
+	active_by_program = {a.program: bool(cint(a.is_active)) for a in assigned}
 
 	if not program_names:
 		program_names = frappe.get_all(
@@ -332,17 +335,18 @@ def get_programs():
 		],
 	)
 	for p in programs:
-		p["status"] = status_by_program.get(p.name, "Active")
-		p["is_active"] = p["status"] == "Active"
+		is_act = active_by_program.get(p.name, True)
+		p["status"] = "Active" if is_act else "Ended"
+		p["is_active"] = is_act
 		p["workout_count"] = frappe.db.count("Workout", {"program": p.name})
 		p["done_count"] = frappe.db.count(
 			"Workout Log", {"member": member, "program": p.name, "status": "Done"}
 		)
 		p["client_count"] = frappe.db.count(
-			"Member Program", {"program": p.name, "status": "Active"}
+			"Member Program", {"program": p.name, "is_active": 1}
 		)
 		if p.get("coach"):
-			p["coach_name"] = frappe.db.get_value("Coach", p.coach, "full_name") or p.coach
+			p["coach_name"] = frappe.db.get_value("Coach", p.coach, "coach_name") or p.coach
 	return programs
 
 
@@ -353,8 +357,8 @@ def get_program_workouts(program: str):
 	workouts = frappe.get_all(
 		"Workout",
 		filters={"program": program},
-		fields=["name", "title", "letter", "scheduled_date", "week", "day_number", "body"],
-		order_by="scheduled_date desc, week asc, day_number asc",
+		fields=["name", "title", "letter", "scheduled_date", "day_index", "summary", "body"],
+		order_by="scheduled_date desc, day_index asc",
 	)
 	if not workouts:
 		return []
@@ -442,14 +446,14 @@ def get_workout(workout: str):
 		"program": doc.program,
 		"scheduled_date": doc.scheduled_date,
 		"body": doc.body,
-		"coach_notes": doc.coach_notes,
+		"summary": getattr(doc, "summary", None),
 		"exercises": [
 			{
 				"exercise": r.exercise,
 				"sets": r.sets,
 				"reps": r.reps,
-				"weight": r.weight,
-				"rest_seconds": r.rest_seconds,
+				"weight": getattr(r, "target_load", None) or getattr(r, "weight", None),
+				"rest": getattr(r, "rest", None),
 				"notes": r.notes,
 			}
 			for r in (doc.exercises or [])
@@ -527,11 +531,8 @@ def log_workout(
 				{
 					"doctype": "Progress Entry",
 					"member": member,
-					"recorded_date": today(),
+					"recorded_on": today(),
 					"metric": s.get("exercise"),
-					"exercise": s.get("exercise")
-					if frappe.db.exists("Exercise", s.get("exercise"))
-					else None,
 					"value": flt(s.get("weight")),
 					"unit": _get_settings().get("default_weight_unit", "kg"),
 					"notes": f"Logged in workout {workout}",
@@ -636,8 +637,8 @@ def get_tracking():
 	rows = frappe.get_all(
 		"Progress Entry",
 		filters={"member": member},
-		fields=["name", "metric", "exercise", "value", "unit", "recorded_date", "notes"],
-		order_by="recorded_date asc, creation asc",
+		fields=["name", "metric", "value", "unit", "recorded_on", "notes"],
+		order_by="recorded_on asc, creation asc",
 	)
 	grouped: dict[str, dict] = {}
 	for r in rows:
@@ -645,7 +646,7 @@ def get_tracking():
 		g["points"].append(
 			{
 				"id": r.name,
-				"date": str(r.recorded_date),
+				"date": str(r.recorded_on),
 				"value": flt(r.value),
 				"notes": r.notes or "",
 			}
@@ -667,14 +668,12 @@ def add_progress_entry(
 	if not metric_clean:
 		frappe.throw(_("Metric name is required"))
 
-	exercise_link = metric_clean if frappe.db.exists("Exercise", metric_clean) else None
 	doc = frappe.get_doc(
 		{
 			"doctype": "Progress Entry",
 			"member": member,
-			"recorded_date": recorded_date or today(),
+			"recorded_on": recorded_date or today(),
 			"metric": metric_clean,
-			"exercise": exercise_link,
 			"value": flt(value),
 			"unit": (unit or "kg").strip(),
 			"notes": notes,
@@ -690,7 +689,7 @@ def add_progress_entry(
 		"metric": doc.metric,
 		"value": flt(doc.value),
 		"unit": doc.unit,
-		"date": str(doc.recorded_date),
+		"date": str(doc.recorded_on),
 	}
 
 
@@ -715,7 +714,8 @@ def get_exercises(q: str | None = None, sport: str | None = None, category: str 
 			["Exercise", "exercise_name", "like", term],
 			["Exercise", "category", "like", term],
 			["Exercise", "sport", "like", term],
-			["Exercise", "description", "like", term],
+			["Exercise", "primary_muscle", "like", term],
+			["Exercise", "equipment", "like", term],
 		]
 
 	rows = frappe.get_all(
@@ -727,7 +727,8 @@ def get_exercises(q: str | None = None, sport: str | None = None, category: str 
 			"exercise_name",
 			"category",
 			"sport",
-			"default_unit",
+			"primary_muscle",
+			"equipment",
 			"video_url",
 			"description",
 		],
@@ -740,9 +741,10 @@ def get_exercises(q: str | None = None, sport: str | None = None, category: str 
 			"name": r.exercise_name,
 			"category": r.category or "Strength",
 			"sport": r.sport or "",
-			"default_unit": r.default_unit or "kg",
+			"primary_muscle": r.primary_muscle or "",
+			"equipment": r.equipment or "",
 			"video_url": r.video_url or "",
-			"description": r.description or "",
+			"description": frappe.utils.strip_html_tags(r.description or ""),
 		}
 		for r in rows
 	]
@@ -760,24 +762,29 @@ def get_classes():
 	settings = _get_settings()
 	sessions = frappe.get_all(
 		"Class Session",
-		filters={"status": "Scheduled", "session_date": [">=", today()]},
+		filters={"status": "Scheduled", "start_time": [">=", f"{today()} 00:00:00"]},
 		fields=[
 			"name",
-			"title",
 			"class_type",
 			"coach",
-			"session_date",
+			"facility",
 			"start_time",
 			"end_time",
 			"capacity",
-			"room",
-			"workout",
 		],
-		order_by="session_date asc, start_time asc",
+		order_by="start_time asc",
 		limit=50,
 	)
 	for s in sessions:
 		s["id"] = s.name
+		s["title"] = s.class_type or s.name
+		start_str = str(s.start_time or "")
+		end_str = str(s.end_time or "")
+		s["session_date"] = start_str[:10] if len(start_str) >= 10 else today()
+		s["start_time"] = start_str[11:16] if len(start_str) >= 16 else start_str
+		s["end_time"] = end_str[11:16] if len(end_str) >= 16 else end_str
+		s["room"] = s.facility or ""
+
 		s["booked_count"] = frappe.db.count(
 			"Class Booking", {"session": s.name, "status": ["in", ["Booked", "Attended"]]}
 		)
@@ -790,14 +797,8 @@ def get_classes():
 		)
 		s["my_booking"] = booking
 		if s.get("coach"):
-			s["coach_name"] = frappe.db.get_value("Coach", s.coach, "full_name") or s.coach
-		if s.get("class_type"):
-			ct = frappe.db.get_value(
-				"Class Type", s.class_type, ["class_type_name", "color"], as_dict=True
-			)
-			if ct:
-				s["class_type_name"] = ct.class_type_name
-				s["color"] = ct.color or "#F23D46"
+			s["coach_name"] = frappe.db.get_value("Coach", s.coach, "coach_name") or s.coach
+		s["color"] = "#F23D46"
 
 	checked_in_today = bool(
 		frappe.db.exists(
@@ -833,7 +834,13 @@ def book_class(session: str):
 		return {"booking": existing.name, "status": existing.status}
 
 	doc = frappe.get_doc(
-		{"doctype": "Class Booking", "session": session, "member": member, "status": "Booked"}
+		{
+			"doctype": "Class Booking",
+			"session": session,
+			"member": member,
+			"status": "Booked",
+			"booked_on": now_datetime(),
+		}
 	).insert(ignore_permissions=True)
 	return {"booking": doc.name, "status": doc.status}
 
@@ -891,7 +898,6 @@ def get_threads():
 	coach_user = _get_coach_for_user()
 
 	if coach_user:
-		# Coaches see threads for their assigned members (or all active members)
 		clients = frappe.get_all(
 			"Member",
 			filters={"status": ["in", ["Active", "Paused"]]},
@@ -928,21 +934,16 @@ def get_threads():
 	# Athlete sees a thread with their assigned Coach (or Head Coach / Gym Desk)
 	assigned_coach_id = frappe.db.get_value("Member", member, "coach")
 	coach_name = "Head Coach"
-	coach_avatar = ""
 	if assigned_coach_id:
-		c_row = frappe.db.get_value(
-			"Coach", assigned_coach_id, ["full_name", "avatar"], as_dict=True
-		)
-		if c_row:
-			coach_name = c_row.full_name
-			coach_avatar = c_row.avatar or ""
+		c_name = frappe.db.get_value("Coach", assigned_coach_id, "coach_name")
+		if c_name:
+			coach_name = c_name
 	else:
 		first_coach = frappe.get_all(
-			"Coach", filters={"active": 1}, fields=["full_name", "avatar"], limit=1
+			"Coach", filters={"is_active": 1}, fields=["coach_name"], limit=1
 		)
 		if first_coach:
-			coach_name = first_coach[0].full_name
-			coach_avatar = first_coach[0].avatar or ""
+			coach_name = first_coach[0].coach_name
 
 	last_comment = frappe.get_all(
 		"Comment",
@@ -959,7 +960,7 @@ def get_threads():
 		{
 			"id": member,
 			"other_name": coach_name,
-			"avatar_url": coach_avatar,
+			"avatar_url": "",
 			"last_message": frappe.utils.strip_html_tags(last_comment[0].content).strip()
 			if last_comment
 			else "Ask your coach about programming, weights, or recovery.",
@@ -1042,7 +1043,6 @@ def get_notifications():
 	member = _get_or_create_member()
 	items = []
 
-	# 1. System Notification Log entries for this user
 	if frappe.db.exists("DocType", "Notification Log"):
 		sys_logs = frappe.get_all(
 			"Notification Log",
@@ -1063,7 +1063,6 @@ def get_notifications():
 				}
 			)
 
-	# 2. Today's scheduled workouts
 	program_ids = _member_program_ids(member)
 	if program_ids:
 		todays_workouts = frappe.get_all(
@@ -1085,7 +1084,6 @@ def get_notifications():
 				}
 			)
 
-	# 3. Upcoming class bookings
 	bookings = frappe.get_all(
 		"Class Booking",
 		filters={"member": member, "status": "Booked"},
@@ -1097,16 +1095,16 @@ def get_notifications():
 		s = frappe.db.get_value(
 			"Class Session",
 			b.session,
-			["title", "session_date", "start_time"],
+			["class_type", "start_time"],
 			as_dict=True,
 		)
-		if s and str(s.session_date) >= str(today()):
+		if s and str(s.start_time or "")[:10] >= str(today()):
 			items.append(
 				{
 					"id": f"cls-{b.name}",
 					"kind": "system",
-					"title": f"Class Booked: {s.title}",
-					"body": f"{s.session_date} at {str(s.start_time)[:5]}",
+					"title": f"Class Booked: {s.class_type}",
+					"body": f"{str(s.start_time)[:16]}",
 					"read_at": str(b.creation),
 					"created_at": str(b.creation),
 				}
@@ -1155,7 +1153,7 @@ def get_marketplace():
 	for p in programs:
 		seller = "Go Train Coaching"
 		if p.coach:
-			seller = frappe.db.get_value("Coach", p.coach, "full_name") or p.coach
+			seller = frappe.db.get_value("Coach", p.coach, "coach_name") or p.coach
 		listings.append(
 			{
 				"id": p.name,
@@ -1180,7 +1178,7 @@ def get_marketplace_purchases():
 	enrollments = frappe.get_all(
 		"Member Program",
 		filters={"member": member},
-		fields=["name", "program", "start_date", "status"],
+		fields=["name", "program", "start_date", "is_active"],
 		order_by="creation desc",
 	)
 	out = []
@@ -1199,7 +1197,7 @@ def get_marketplace_purchases():
 					"title": p.program_name,
 					"price_cents": int(round(flt(p.price) * 100)),
 					"currency": p.currency or default_curr,
-					"status": e.status,
+					"status": "Active" if cint(e.is_active) else "Ended",
 					"start_date": str(e.start_date),
 				}
 			)
@@ -1213,7 +1211,7 @@ def get_marketplace_sales():
 	default_curr = settings.get("default_currency") or "USD"
 	enrollments = frappe.get_all(
 		"Member Program",
-		fields=["name", "member", "program", "start_date", "status"],
+		fields=["name", "member", "program", "start_date", "is_active"],
 		order_by="creation desc",
 		limit=50,
 	)
@@ -1249,7 +1247,7 @@ def buy_program(program: str):
 		"name",
 	)
 	if existing:
-		frappe.db.set_value("Member Program", existing, "status", "Active")
+		frappe.db.set_value("Member Program", existing, "is_active", 1)
 		return {"enrollment": existing, "status": "Active"}
 
 	doc = frappe.get_doc(
@@ -1258,10 +1256,10 @@ def buy_program(program: str):
 			"member": member,
 			"program": program,
 			"start_date": today(),
-			"status": "Active",
+			"is_active": 1,
 		}
 	).insert(ignore_permissions=True)
-	return {"enrollment": doc.name, "status": doc.status}
+	return {"enrollment": doc.name, "status": "Active"}
 
 
 @frappe.whitelist()
@@ -1300,9 +1298,9 @@ def get_gym_team():
 	settings = _get_settings()
 	coaches = frappe.get_all(
 		"Coach",
-		filters={"active": 1},
-		fields=["name", "full_name", "specialty", "email"],
-		order_by="full_name asc",
+		filters={"is_active": 1},
+		fields=["name", "coach_name", "sport", "phone"],
+		order_by="coach_name asc",
 	)
 	members = frappe.get_all(
 		"Member",
@@ -1323,8 +1321,8 @@ def get_gym_team():
 		roster.append(
 			{
 				"id": f"coach-{c.name}",
-				"full_name": c.full_name,
-				"team_role": f"Coach · {c.specialty}" if c.specialty else "Coach",
+				"full_name": c.coach_name,
+				"team_role": f"Coach · {c.sport}" if c.sport else "Coach",
 				"user_role": "Coach",
 				"is_paying_client": False,
 			}
@@ -1401,7 +1399,7 @@ def get_coach_clients():
 	out = []
 	for m in members:
 		active_count = frappe.db.count(
-			"Member Program", {"member": m.name, "status": "Active"}
+			"Member Program", {"member": m.name, "is_active": 1}
 		)
 		out.append(
 			{
@@ -1466,7 +1464,7 @@ def create_coach_workout(
 			"letter": (letter or "A").strip()[:4],
 			"scheduled_date": scheduled_date or today(),
 			"body": body.strip(),
-			"coach_notes": coach_notes,
+			"summary": coach_notes,
 		}
 	).insert(ignore_permissions=True)
 	return {"id": doc.name, "title": doc.title, "scheduled_on": str(doc.scheduled_date)}
@@ -1479,7 +1477,7 @@ def assign_member_program(member: str, program: str):
 		"Member Program", {"member": member, "program": program}, "name"
 	)
 	if existing:
-		frappe.db.set_value("Member Program", existing, "status", "Active")
+		frappe.db.set_value("Member Program", existing, "is_active", 1)
 		return {"id": existing, "status": "Active"}
 
 	doc = frappe.get_doc(
@@ -1488,7 +1486,7 @@ def assign_member_program(member: str, program: str):
 			"member": member,
 			"program": program,
 			"start_date": today(),
-			"status": "Active",
+			"is_active": 1,
 		}
 	).insert(ignore_permissions=True)
-	return {"id": doc.name, "status": doc.status}
+	return {"id": doc.name, "status": "Active"}

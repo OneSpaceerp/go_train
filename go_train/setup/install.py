@@ -25,30 +25,30 @@ STARTER_SPORTS = (
 )
 
 STARTER_EXERCISES = (
-	("Back Squat", "Strength", "Powerlifting", "kg", "Barbell back squat to full depth."),
-	("Front Squat", "Strength", "Weightlifting", "kg", "Barbell front-rack squat with upright torso."),
-	("Deadlift", "Strength", "Powerlifting", "kg", "Conventional or sumo barbell deadlift from the floor."),
-	("Bench Press", "Strength", "Powerlifting", "kg", "Flat barbell bench press."),
-	("Strict Press", "Strength", "General Fitness", "kg", "Standing overhead barbell press with no leg drive."),
-	("Snatch", "Strength", "Weightlifting", "kg", "Full squat snatch from floor to overhead."),
-	("Clean & Jerk", "Strength", "Weightlifting", "kg", "Full squat clean followed by split or power jerk."),
-	("Thruster", "WOD", "CrossFit", "kg", "Front squat directly into an overhead push press."),
-	("Wall Ball", "WOD", "CrossFit", "reps", "Medicine ball squat and throw to target height."),
-	("Burpee", "WOD", "CrossFit", "reps", "Chest-to-floor burpee with full hip extension jump."),
-	("Pull-up", "Skill", "Gymnastics", "reps", "Strict, kipping, or butterfly chin-over-bar pull-up."),
-	("Bar Muscle-up", "Skill", "Gymnastics", "reps", "Pull-up transitioning above the pull-up bar to locked-out support."),
-	("Toes-to-Bar", "Core", "Gymnastics", "reps", "Hanging core raise bringing both feet to contact the bar."),
-	("Hollow Hold", "Core", "Gymnastics", "sec", "Isometric gymnastics hollow-body core hold."),
-	("Row (Concept2)", "Engine", "CrossFit", "m", "Ergometer rowing for distance, calories, or pace."),
-	("5K Run", "Engine", "Running", "min", "5,000-meter endurance time trial or tempo run."),
-	("90/90 Hip Mobility", "Mobility", "General Fitness", "sec", "Internal and external hip rotation floor transitions."),
+	("Back Squat", "Strength", "Powerlifting", "Quads & Glutes", "Barbell", "Barbell back squat to full depth."),
+	("Front Squat", "Strength", "Weightlifting", "Quads & Core", "Barbell", "Barbell front-rack squat with upright torso."),
+	("Deadlift", "Strength", "Powerlifting", "Posterior Chain", "Barbell", "Conventional or sumo barbell deadlift from the floor."),
+	("Bench Press", "Strength", "Powerlifting", "Chest & Triceps", "Barbell", "Flat barbell bench press."),
+	("Strict Press", "Strength", "General Fitness", "Shoulders", "Barbell", "Standing overhead barbell press with no leg drive."),
+	("Snatch", "Strength", "Weightlifting", "Full Body", "Barbell", "Full squat snatch from floor to overhead."),
+	("Clean & Jerk", "Strength", "Weightlifting", "Full Body", "Barbell", "Full squat clean followed by split or power jerk."),
+	("Thruster", "WOD", "CrossFit", "Full Body", "Barbell", "Front squat directly into an overhead push press."),
+	("Wall Ball", "WOD", "CrossFit", "Legs & Shoulders", "Medicine Ball", "Medicine ball squat and throw to target height."),
+	("Burpee", "WOD", "CrossFit", "Full Body", "Bodyweight", "Chest-to-floor burpee with full hip extension jump."),
+	("Pull-up", "Skill", "Gymnastics", "Lats & Biceps", "Pull-up Bar", "Strict, kipping, or butterfly chin-over-bar pull-up."),
+	("Bar Muscle-up", "Skill", "Gymnastics", "Upper Body", "Pull-up Bar", "Pull-up transitioning above the pull-up bar to support."),
+	("Toes-to-Bar", "Core", "Gymnastics", "Core & Hip Flexors", "Pull-up Bar", "Hanging core raise bringing both feet to contact the bar."),
+	("Hollow Hold", "Core", "Gymnastics", "Core", "Bodyweight", "Isometric gymnastics hollow-body core hold."),
+	("Row (Concept2)", "Engine", "CrossFit", "Full Body", "Rower", "Ergometer rowing for distance, calories, or pace."),
+	("5K Run", "Engine", "Running", "Cardio & Legs", "Track / Road", "5,000-meter endurance time trial or tempo run."),
+	("90/90 Hip Mobility", "Mobility", "General Fitness", "Hips", "Bodyweight", "Internal and external hip rotation floor transitions."),
 )
 
 STARTER_CLASS_TYPES = (
-	("CrossFit WOD", "CrossFit", 60, 16, "#F23D46", "Daily coached group conditioning and strength class."),
-	("Olympic Lifting", "Weightlifting", 75, 12, "#D97706", "Technical Snatch and Clean & Jerk session."),
-	("Engine & Conditioning", "Running", 45, 20, "#059669", "Row, bike, ski, and running aerobic intervals."),
-	("Open Gym", "General Fitness", 90, 24, "#2563EB", "Self-directed training block with floor access."),
+	("CrossFit WOD", "CrossFit", 60, 16, "Daily coached group conditioning and strength class."),
+	("Olympic Lifting", "Weightlifting", 75, 12, "Technical Snatch and Clean & Jerk session."),
+	("Engine & Conditioning", "Running", 45, 20, "Row, bike, ski, and running aerobic intervals."),
+	("Open Gym", "General Fitness", 90, 24, "Self-directed training block with floor access."),
 )
 
 
@@ -79,12 +79,13 @@ def ensure_starter_catalog():
 				{
 					"doctype": "Sport",
 					"sport_name": sport_name,
+					"is_active": 1,
 					"description": description,
 				}
 			).insert(ignore_permissions=True)
 
 	if frappe.db.exists("DocType", "Exercise"):
-		for ex_name, category, sport, unit, desc in STARTER_EXERCISES:
+		for ex_name, category, sport, muscle, equipment, desc in STARTER_EXERCISES:
 			if not frappe.db.exists("Exercise", ex_name):
 				frappe.get_doc(
 					{
@@ -92,22 +93,23 @@ def ensure_starter_catalog():
 						"exercise_name": ex_name,
 						"category": category,
 						"sport": sport if frappe.db.exists("Sport", sport) else None,
-						"default_unit": unit,
+						"primary_muscle": muscle,
+						"equipment": equipment,
 						"description": desc,
 					}
 				).insert(ignore_permissions=True)
 
 	if frappe.db.exists("DocType", "Class Type"):
-		for ct_name, sport, duration, cap, color, desc in STARTER_CLASS_TYPES:
-			if not frappe.db.exists("Class Type", ct_name):
+		for class_name, sport, duration, cap, desc in STARTER_CLASS_TYPES:
+			if not frappe.db.exists("Class Type", class_name):
 				frappe.get_doc(
 					{
 						"doctype": "Class Type",
-						"class_type_name": ct_name,
+						"class_name": class_name,
 						"sport": sport if frappe.db.exists("Sport", sport) else None,
-						"default_duration_minutes": duration,
-						"default_capacity": cap,
-						"color": color,
+						"duration_minutes": duration,
+						"capacity": cap,
+						"is_active": 1,
 						"description": desc,
 					}
 				).insert(ignore_permissions=True)
