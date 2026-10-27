@@ -1,14 +1,22 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-const route = useRoute()
-// Tab switches crossfade; going deeper/back slides.
-const transition = computed(() => (route.meta.tab ? 'fade' : 'slide'))
+import { navDirection } from './router.js'
+
+// Directional page transitions:
+// - Tab switches crossfade smoothly
+// - Pushing deeper slides forward (incoming from right)
+// - Navigating back slides backward (outgoing to right)
+const transition = computed(() => {
+  if (navDirection.value === 'tab') return 'fade'
+  if (navDirection.value === 'backward') return 'slide-back'
+  return 'slide-forward'
+})
 </script>
+
 <template>
-  <RouterView v-slot="{ Component }">
+  <RouterView v-slot="{ Component, route }">
     <Transition :name="transition" mode="out-in">
-      <component :is="Component" />
+      <component :is="Component" :key="route.path" />
     </Transition>
   </RouterView>
 </template>

@@ -42,6 +42,14 @@ def sw():
 	with open(sw_path, encoding="utf-8") as f:
 		content = f.read()
 
+	base = "/assets/go_train/frontend/"
+	content = (
+		content.replace('define(["./workbox-', f'define(["{base}workbox-')
+		.replace('url:"assets/', f'url:"{base}assets/')
+		.replace('url:"manifest.webmanifest"', f'url:"{base}manifest.webmanifest"')
+		.replace('url:"sw-custom.js"', f'url:"{base}sw-custom.js"')
+	)
+
 	return Response(
 		content,
 		mimetype="application/javascript",
@@ -1138,6 +1146,38 @@ def mark_notifications_read():
 			(frappe.session.user,),
 		)
 	return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def save_push_subscription(subscription=None, device_label: str | None = None):
+	"""Store a Web Push / FCM subscription for the signed-in user."""
+	member = _get_or_create_member()
+	payload = subscription
+	if isinstance(payload, str):
+		try:
+			payload = json.loads(payload)
+		except Exception:
+			payload = {"raw": payload}
+	key = f"gotrain:push:{frappe.session.user}"
+	frappe.cache.set_value(
+		key,
+		{
+			"member": member,
+			"user": frappe.session.user,
+			"device_label": device_label or "",
+			"subscription": payload,
+			"updated_at": str(now_datetime()),
+		},
+	)
+	return {"ok": True, "subscribed": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def remove_push_subscription():
+	"""Remove the Web Push subscription for the signed-in user."""
+	key = f"gotrain:push:{frappe.session.user}"
+	frappe.cache.delete_value(key)
+	return {"ok": True, "subscribed": False}
 
 
 # ---------------------------------------------------------------------------

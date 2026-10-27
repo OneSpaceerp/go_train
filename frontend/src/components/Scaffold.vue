@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router'
 import AppHeader from './AppHeader.vue'
 import BottomNav from './BottomNav.vue'
 import Icon from './Icon.vue'
-import { isOnline, pendingSyncCount } from '../lib/pwa.js'
+import { isOnline, pendingSyncCount, swUpdateAvailable, applySwUpdate } from '../lib/pwa.js'
 import { haptics } from '../lib/haptics.js'
 import { t, isRtl } from '../lib/i18n.js'
 
@@ -23,11 +23,14 @@ const router = useRouter()
 const scrolled = ref(false)
 const pullDistance = ref(0)
 const refreshing = ref(false)
+const edgeSwipeDx = ref(0)
+const isEdgeSwiping = ref(false)
 
 let touchStartY = 0
 let touchStartX = 0
 let pulling = false
 let edgeSwipe = false
+let pullThresholdCrossed = false
 
 function onScroll() {
   scrolled.value = window.scrollY > 6
@@ -39,11 +42,14 @@ function onTouchStart(e) {
   touchStartY = touch.clientY
   touchStartX = touch.clientX
   pulling = window.scrollY <= 0
-  // Edge swipe back from leading 24px margin on detail views
+  pullThresholdCrossed = false
+  // Interactive finger-tracking edge swipe back from leading 26px margin on detail views
   const fromLeadingEdge = isRtl.value
-    ? window.innerWidth - touch.clientX < 26
-    : touch.clientX < 26
+    ? window.innerWidth - touch.clientX < 28
+    : touch.clientX < 28
   edgeSwipe = Boolean(props.back && fromLeadingEdge)
+  isEdgeSwiping.value = false
+  edgeSwipeDx.value = 0
 }
 
 function onTouchMove(e) {
@@ -51,8 +57,27 @@ function onTouchMove(e) {
   const dy = e.touches[0].clientY - touchStartY
   const dx = e.touches[0].clientX - touchStartX
 
+  if (edgeSwipe) {
+    const directionalDx = isRtl.value ? -dx : dx
+    if (directionalDx > 6 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      isEdgeSwiping.value = true
+      edgeSwipeDx.value = isRtl.value
+        ? -Math.min(window.innerWidth * 0.75, directionalDx)
+        : Math.min(window.innerWidth * 0.75, directionalDx)
+      pullDistance.value = 0
+      return
+    }
+  }
+
   if (pulling && dy > 0 && Math.abs(dy) > Math.abs(dx) * 1.4 && window.scrollY <= 0) {
-    pullDistance.value = Math.min(84, dy * 0.42)
+    const nextPull = Math.min(84, dy * 0.42)
+    if (nextPull >= 56 && !pullThresholdCrossed) {
+      pullThresholdCrossed = true
+      haptics.select()
+    } else if (nextPull < 56 && pullThresholdCrossed) {
+      pullThresholdCrossed = false
+    }
+    pullDistance.value = nextPull
   } else if (dy < 0) {
     pullDistance.value = 0
   }
@@ -62,8 +87,10 @@ async function onTouchEnd(e) {
   if (edgeSwipe && e.changedTouches?.length) {
     const dx = e.changedTouches[0].clientX - touchStartX
     const dy = Math.abs(e.changedTouches[0].clientY - touchStartY)
-    const triggered = isRtl.value ? dx < -85 : dx > 85
-    if (triggered && dy < 48) {
+    const triggered = isRtl.value ? dx < -76 : dx > 76
+    isEdgeSwiping.value = false
+    edgeSwipeDx.value = 0
+    if (triggered && dy < 60) {
       haptics.tap()
       if (window.history.length > 1) router.back()
       else router.replace('/')
@@ -72,6 +99,8 @@ async function onTouchEnd(e) {
       return
     }
   }
+  isEdgeSwiping.value = false
+  edgeSwipeDx.value = 0
   edgeSwipe = false
 
   if (pullDistance.value >= 56 && !refreshing.value) {
@@ -102,6 +131,11 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 <template>
   <div
     class="min-h-dvh bg-surface-page text-ink flex flex-col"
+    :style="{
+      transform: edgeSwipeDx ? `translateX(${edgeSwipeDx}px)` : undefined,
+      transition: isEdgeSwiping ? 'none' : 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+      boxShadow: edgeSwipeDx ? '-12px 0 32px rgba(0,0,0,0.22)' : undefined,
+    }"
     @touchstart.passive="onTouchStart"
     @touchmove.passive="onTouchMove"
     @touchend="onTouchEnd"
@@ -115,6 +149,26 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
     >
       <template #actions><slot name="actions" /></template>
     </AppHeader>
+
+    <!-- Controlled Service Worker Update Banner (PWABuilder / professional-pwa-builder) -->
+    <div
+      v-if="swUpdateAvailable"
+      class="mx-auto w-full max-w-[36rem] px-4 pt-2"
+    >
+      <button
+        type="button"
+        class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-650 text-white shadow-card active:scale-[0.99] transition"
+        @click="haptics.medium(); applySwUpdate()"
+      >
+        <span class="flex items-center gap-2">
+          <Icon name="spark" :size="15" />
+          New Go Train update ready
+        </span>
+        <span class="px-2.5 py-1 rounded-full bg-white/20 text-[0.6875rem] font-bold">
+          Tap to reload
+        </span>
+      </button>
+    </div>
 
     <!-- Offline / Queued Sync Status Banner -->
     <div

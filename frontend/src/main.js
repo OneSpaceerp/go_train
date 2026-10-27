@@ -4,21 +4,13 @@ import { router } from './router.js'
 import { applyTheme, applyLocale, initFromBoot, setUser } from './lib/session.js'
 import { api } from './lib/api.js'
 import { dismissSplash } from './lib/splash.js'
+import { registerPwaServiceWorker, initVisualViewportKeyboard } from './lib/pwa.js'
+import { initStoragePersistence } from './lib/permissions.js'
 import './style.css'
 
-// Register the PWA service worker served from go_train.api.pwa.sw with
-// Service-Worker-Allowed: /gotrain so it controls /gotrain and all subroutes.
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/api/method/go_train.api.pwa.sw', { scope: '/gotrain' })
-        .catch(() => {})
-    })
-  }
-}
-
 async function start() {
+  initVisualViewportKeyboard()
+
   let user = null
   let fullName = ''
   try {
@@ -44,12 +36,13 @@ async function start() {
       const me = await api.get('/auth/me')
       if (me?.user) setUser(me.user)
     } catch { /* offline fallback uses cached user */ }
+    initStoragePersistence()
   }
 
   applyTheme()
   applyLocale()
   createApp(App).use(router).mount('#app')
-  registerServiceWorker()
+  registerPwaServiceWorker(router)
 
   // Let the multi-stage launch choreography finish before revealing the app.
   dismissSplash()

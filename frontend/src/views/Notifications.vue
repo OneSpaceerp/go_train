@@ -5,20 +5,61 @@ import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { api } from '../lib/api.js'
 import { fromNow } from '../lib/format.js'
+import { unreadNotifications } from '../lib/pwa.js'
+import {
+  notificationSupported,
+  notificationPermission,
+  requestNotificationPermission,
+} from '../lib/permissions.js'
 
 const items = ref([])
 const loading = ref(true)
 const ICON = { workout: 'dumbbell', message: 'message', promo: 'tag', system: 'bell' }
-onMounted(async () => {
+
+async function load() {
+  loading.value = true
   try {
     items.value = await api.get('/notifications')
+    unreadNotifications.value = 0
+    if ('clearAppBadge' in navigator) {
+      navigator.clearAppBadge().catch(() => {})
+    }
     api.post('/notifications/read').catch(() => {})
-  } finally { loading.value = false }
-})
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(load)
 </script>
 
 <template>
-  <Scaffold title="Notifications" back>
+  <Scaffold title="Notifications" back :onRefresh="load">
+    <!-- Native OS Push Permission Prompt Banner -->
+    <div
+      v-if="notificationSupported && notificationPermission === 'default'"
+      class="card p-4 mt-3 flex items-center justify-between gap-3 border-brand-500/30"
+    >
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-brand-600/15 text-brand-600 grid place-items-center shrink-0">
+          <Icon name="bell" :size="18" />
+        </div>
+        <div class="min-w-0">
+          <p class="font-bold text-sm text-ink">Enable Device Notifications</p>
+          <p class="text-xs text-ink-soft">
+            Receive instant coach alerts &amp; rest timer chimes
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+        @click="requestNotificationPermission()"
+      >
+        Allow
+      </button>
+    </div>
+
     <div v-if="loading" class="space-y-3 pt-4">
       <div v-for="i in 3" :key="i" class="card p-4 h-16 animate-pulse bg-surface-sunk"></div>
     </div>

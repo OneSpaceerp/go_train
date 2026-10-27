@@ -181,17 +181,54 @@ button, a, [role="button"], input, select, textarea {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* Page transitions: iOS push/pop spring curve; crossfade for tabs */
-.slide-enter-active, .slide-leave-active {
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.24s ease;
+/* Hide bottom tab dock smoothly when virtual keyboard opens (native-shell.md) */
+.keyboard-open .bottom-nav-dock {
+  transform: translateY(130%);
+  opacity: 0;
+  pointer-events: none;
 }
-.slide-enter-from { transform: translateX(18px); opacity: 0; }
-.slide-leave-to { transform: translateX(-10px); opacity: 0; position: absolute; width: 100%; }
-[dir="rtl"] .slide-enter-from { transform: translateX(-18px); }
-[dir="rtl"] .slide-leave-to { transform: translateX(10px); }
+
+/* Directional Page Transitions: iOS CoreAnimation curve cubic-bezier(0.32, 0.72, 0, 1) */
+.slide-forward-enter-active, .slide-forward-leave-active,
+.slide-back-enter-active, .slide-back-leave-active {
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.26s ease;
+}
+
+/* Forward push: new screen slides in from right; old screen parallaxes 20% left */
+.slide-forward-enter-from { transform: translateX(28px); opacity: 0; }
+.slide-forward-leave-to { transform: translateX(-14px); opacity: 0; }
+[dir="rtl"] .slide-forward-enter-from { transform: translateX(-28px); }
+[dir="rtl"] .slide-forward-leave-to { transform: translateX(14px); }
+
+/* Backward pop: old screen slides out to right; returning screen parallaxes in from left */
+.slide-back-enter-from { transform: translateX(-18px); opacity: 0; }
+.slide-back-leave-to { transform: translateX(28px); opacity: 0; }
+[dir="rtl"] .slide-back-enter-from { transform: translateX(18px); }
+[dir="rtl"] .slide-back-leave-to { transform: translateX(-28px); }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.16s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* View Transitions API native engine animations when supported */
+@keyframes gt-slide-out-left  { from { transform: translateX(0); } to { transform: translateX(-20%); opacity: 0.82; } }
+@keyframes gt-slide-in-right  { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes gt-slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes gt-slide-in-left   { from { transform: translateX(-20%); opacity: 0.82; } to { transform: translateX(0); } }
+
+[data-direction="forward"]::view-transition-old(root) {
+  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-out-left;
+}
+[data-direction="forward"]::view-transition-new(root) {
+  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-in-right;
+}
+[data-direction="backward"]::view-transition-old(root) {
+  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-out-right;
+  z-index: 2;
+}
+[data-direction="backward"]::view-transition-new(root) {
+  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-in-left;
+  z-index: 1;
+}
 
 /* Sheet modal transition */
 .sheet-enter-active, .sheet-leave-active {
@@ -206,9 +243,15 @@ button, a, [role="button"], input, select, textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slide-enter-from, .slide-leave-to,
+  .slide-forward-enter-from, .slide-forward-leave-to,
+  .slide-back-enter-from, .slide-back-leave-to,
   .sheet-enter-from .sheet-panel, .sheet-leave-to .sheet-panel {
     transform: none !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
   }
 }
 

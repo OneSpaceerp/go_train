@@ -1,5 +1,6 @@
 // Auth session: current user & preferences, kept in a reactive store and localStorage.
 import { reactive } from 'vue'
+import { purgeAllCachesOnLogout } from './pwa.js'
 
 const TOKEN_KEY = 'go-train-token'
 const USER_KEY = 'go-train-user'
@@ -53,6 +54,7 @@ export function clearSession() {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
   } catch {}
+  purgeAllCachesOnLogout()
 }
 
 // Apply the user's theme preference to <html> and sync <meta name="theme-color">.

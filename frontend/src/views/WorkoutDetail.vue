@@ -11,6 +11,14 @@ import { niceDate } from '../lib/format.js'
 import { highlight } from '../lib/search.js'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
+import {
+  wakeLockActive,
+  acquireWakeLock,
+  releaseWakeLock,
+  toggleWakeLock,
+  sendLocalNotification,
+  shareContent,
+} from '../lib/permissions.js'
 
 const route = useRoute()
 const w = ref(null)
@@ -36,6 +44,7 @@ let restInterval = null
 function startRestTimer(seconds = 90) {
   clearInterval(restInterval)
   restRemaining.value = seconds
+  acquireWakeLock()
   restInterval = setInterval(() => {
     if (restRemaining.value > 1) {
       restRemaining.value -= 1
@@ -43,6 +52,11 @@ function startRestTimer(seconds = 90) {
       restRemaining.value = 0
       clearInterval(restInterval)
       haptics.timerComplete()
+      sendLocalNotification({
+        title: '⏱️ Rest Complete!',
+        body: `Time for your next set of ${w.value?.title || 'training'}!`,
+        tag: 'gotrain-rest-timer',
+      })
     }
   }, 1000)
 }
@@ -59,7 +73,22 @@ function skipRest() {
   restRemaining.value = 0
 }
 
-onUnmounted(() => clearInterval(restInterval))
+async function shareWorkout() {
+  if (!w.value) return
+  const summary = result.value
+    ? `${w.value.title} — Logged: ${result.value}`
+    : `${w.value.title}\n${w.value.body || ''}`.trim()
+  await shareContent({
+    title: `Go Train · ${w.value.title}`,
+    text: summary,
+    url: window.location.href,
+  })
+}
+
+onUnmounted(() => {
+  clearInterval(restInterval)
+  releaseWakeLock()
+})
 
 const restLabel = computed(() => {
   const m = Math.floor(restRemaining.value / 60)
@@ -139,7 +168,10 @@ async function load() {
   await nextTick()
   runFind()
 }
-onMounted(load)
+onMounted(() => {
+  load()
+  acquireWakeLock()
+})
 
 function addSetRow() {
   haptics.tap()
@@ -275,6 +307,24 @@ function onFindInput() {
 <template>
   <Scaffold :title="w?.title || 'Workout'" :subtitle="w?.scheduled_on ? niceDate(w.scheduled_on) : ''" back :onRefresh="load">
     <template #actions>
+      <button
+        type="button"
+        class="icon-btn"
+        :class="wakeLockActive ? 'text-brand-600' : 'text-ink-mute'"
+        :aria-label="wakeLockActive ? 'Screen kept awake' : 'Keep screen awake'"
+        title="Keep screen awake during workout"
+        @click="toggleWakeLock()"
+      >
+        <Icon name="sun" :size="18" />
+      </button>
+      <button
+        type="button"
+        class="icon-btn text-ink-soft"
+        aria-label="Share workout"
+        @click="shareWorkout"
+      >
+        <Icon name="share" :size="18" />
+      </button>
       <button
         type="button"
         class="btn-soft !min-h-[40px] !px-3 mr-1 text-xs"

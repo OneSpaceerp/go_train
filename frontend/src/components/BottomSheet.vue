@@ -16,11 +16,24 @@ const emit = defineEmits(['close'])
 const dragY = ref(0)
 const dragging = ref(false)
 let startY = 0
+let pushedHistoryState = false
 
-function close() {
+function close(fromPopstate = false) {
   haptics.tap()
   dragY.value = 0
+  if (pushedHistoryState && !fromPopstate && typeof window !== 'undefined') {
+    pushedHistoryState = false
+    window.history.back()
+  }
+  pushedHistoryState = false
   emit('close')
+}
+
+function onPopstate() {
+  if (props.open && pushedHistoryState) {
+    pushedHistoryState = false
+    close(true)
+  }
 }
 
 function onTouchStart(e) {
@@ -56,12 +69,25 @@ watch(
     if (typeof document !== 'undefined') {
       document.body.style.overflow = val ? 'hidden' : ''
     }
+    if (typeof window !== 'undefined') {
+      if (val && !pushedHistoryState) {
+        window.history.pushState({ ...(window.history.state || {}), _sheetOpen: true }, '')
+        pushedHistoryState = true
+      } else if (!val && pushedHistoryState) {
+        pushedHistoryState = false
+      }
+    }
   },
+  { immediate: true },
 )
 
-onMounted(() => window.addEventListener('keydown', onKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  window.addEventListener('popstate', onPopstate)
+})
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('popstate', onPopstate)
   if (typeof document !== 'undefined') document.body.style.overflow = ''
 })
 </script>

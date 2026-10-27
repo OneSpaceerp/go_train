@@ -16,9 +16,47 @@ import {
 } from '../lib/session.js'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
+import {
+  isStandalone,
+  canInstall,
+  promptInstall,
+  swUpdateAvailable,
+  applySwUpdate,
+} from '../lib/pwa.js'
+import {
+  notificationSupported,
+  notificationPermission,
+  requestNotificationPermission,
+  sendLocalNotification,
+  wakeLockSupported,
+  wakeLockActive,
+  toggleWakeLock,
+  storagePersisted,
+  storageUsageMb,
+} from '../lib/permissions.js'
 
 const router = useRouter()
 const u = computed(() => session.user || {})
+const testNotifSent = ref(false)
+
+async function enableOrTestNotifications() {
+  if (notificationPermission.value !== 'granted') {
+    const res = await requestNotificationPermission()
+    if (!res?.ok && res !== 'granted') return
+    testNotifSent.value = true
+    setTimeout(() => (testNotifSent.value = false), 2600)
+    return
+  }
+  const ok = await sendLocalNotification({
+    title: 'Go Train · Notifications Active ⚡',
+    body: 'Rest timers, coach messages, and workout reminders will alert you just like a native app.',
+    url: '/gotrain/notifications',
+  })
+  if (ok) {
+    testNotifSent.value = true
+    setTimeout(() => (testNotifSent.value = false), 2600)
+  }
+}
 
 // Editable physical profile sheet
 const editingProfile = ref(false)
@@ -224,6 +262,104 @@ const links = computed(() => [
             {{ th }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <p class="section-label mt-6 mb-2 px-1">Device &amp; Native Capabilities</p>
+    <div class="card divide-y divide-line overflow-hidden">
+      <!-- Push & Timer Notifications -->
+      <div v-if="notificationSupported" class="flex items-center gap-3 p-4 min-h-[56px]">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+          <Icon name="bell" :size="18" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-ink text-sm">Push &amp; Rest Timer Alerts</p>
+          <p class="text-xs text-ink-mute truncate">
+            {{
+              notificationPermission === 'granted'
+                ? testNotifSent
+                  ? 'Test notification delivered!'
+                  : 'Enabled for workout & rest alerts'
+                : notificationPermission === 'denied'
+                  ? 'Blocked in browser site settings'
+                  : 'Get alerted when rest timers finish'
+            }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="btn-soft !min-h-[38px] !px-3.5 text-xs shrink-0"
+          :disabled="notificationPermission === 'denied'"
+          @click="enableOrTestNotifications"
+        >
+          {{
+            notificationPermission === 'granted'
+              ? testNotifSent
+                ? 'Sent ✓'
+                : 'Test Alert'
+              : notificationPermission === 'denied'
+                ? 'Blocked'
+                : 'Enable'
+          }}
+        </button>
+      </div>
+
+      <!-- Screen Wake Lock -->
+      <div v-if="wakeLockSupported" class="flex items-center gap-3 p-4 min-h-[56px]">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+          <Icon name="flame" :size="18" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-ink text-sm">Keep Screen Awake</p>
+          <p class="text-xs text-ink-mute truncate">
+            Auto-locks screen on during active workouts &amp; timers
+          </p>
+        </div>
+        <button
+          type="button"
+          class="btn-soft !min-h-[38px] !px-3.5 text-xs shrink-0"
+          :class="wakeLockActive ? '!bg-brand-650 !text-white' : ''"
+          @click="toggleWakeLock()"
+        >
+          {{ wakeLockActive ? 'Awake On' : 'Auto' }}
+        </button>
+      </div>
+
+      <!-- Offline Storage & App Installation Status -->
+      <div class="flex items-center gap-3 p-4 min-h-[56px]">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+          <Icon name="spark" :size="18" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-ink text-sm">Native App Runtime</p>
+          <p class="text-xs text-ink-mute truncate">
+            {{ isStandalone ? 'Installed Standalone' : 'Browser Mode' }}
+            <template v-if="storageUsageMb !== null"> · {{ storageUsageMb }} MB cached</template>
+            <template v-if="storagePersisted"> · Persistent ✓</template>
+          </p>
+        </div>
+        <button
+          v-if="swUpdateAvailable"
+          type="button"
+          class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+          @click="applySwUpdate()"
+        >
+          Update App
+        </button>
+        <button
+          v-else-if="canInstall && !isStandalone"
+          type="button"
+          class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+          @click="promptInstall()"
+        >
+          Install
+        </button>
+        <span
+          v-else
+          class="pill text-ok border-ok/30 bg-ok/10 text-xs shrink-0"
+        >
+          Ready ✓
+        </span>
       </div>
     </div>
 

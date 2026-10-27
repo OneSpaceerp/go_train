@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import BottomSheet from './BottomSheet.vue'
 import Icon from './Icon.vue'
 import { haptics } from '../lib/haptics.js'
+import { acquireWakeLock, releaseWakeLock, sendLocalNotification } from '../lib/permissions.js'
 
 // Multi-mode Training Timer Sheet:
 // 1. Stopwatch (counts up; emits `use` with elapsed seconds for workout log duration)
@@ -47,6 +48,11 @@ function tick() {
       countdownLeft.value = 0
       pause()
       haptics.timerComplete()
+      sendLocalNotification({
+        title: '⏱️ Rest Timer Complete!',
+        body: 'Your countdown has finished — time for your next set!',
+        tag: 'gotrain-rest-timer',
+      })
     }
   }
 }
@@ -60,6 +66,7 @@ function toggle() {
       countdownLeft.value = countdownTotal.value
     }
     running.value = true
+    acquireWakeLock()
     timer = setInterval(tick, 1000)
   }
 }
@@ -81,7 +88,14 @@ function useElapsed() {
   emit('use', elapsed.value)
 }
 
-onUnmounted(() => clearInterval(timer))
+onMounted(() => {
+  acquireWakeLock()
+})
+
+onUnmounted(() => {
+  clearInterval(timer)
+  releaseWakeLock()
+})
 
 const activeSeconds = computed(() =>
   mode.value === 'stopwatch' ? elapsed.value : countdownLeft.value,

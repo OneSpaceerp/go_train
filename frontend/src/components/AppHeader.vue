@@ -17,11 +17,18 @@ function goBack() {
   if (window.history.length > 1) router.back()
   else router.replace('/')
 }
+
+function scrollToTop() {
+  if (window.scrollY > 12) {
+    haptics.select()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
 </script>
 
 <template>
   <header
-    class="sticky top-0 z-30 glass-bar transition-colors duration-200"
+    class="sticky top-0 z-30 glass-bar transition-colors duration-200 select-none"
     :class="scrolled ? 'border-b shadow-sm' : 'border-b border-transparent'"
     style="padding-top: env(safe-area-inset-top);"
   >
@@ -37,7 +44,11 @@ function goBack() {
       </button>
       <div v-else class="w-2"></div>
 
-      <div class="flex-1 min-w-0" :class="back ? '' : 'px-1'">
+      <div
+        class="flex-1 min-w-0 cursor-pointer"
+        :class="back ? '' : 'px-1'"
+        @click="scrollToTop"
+      >
         <h1 class="text-[1.0625rem] font-semibold tracking-tight text-ink truncate leading-tight">
           {{ title }}
         </h1>

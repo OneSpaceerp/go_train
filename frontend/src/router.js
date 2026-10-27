@@ -1,5 +1,14 @@
+import { ref } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { session, isCoach } from './lib/session.js'
+
+if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
+export const navDirection = ref('tab') // 'tab' | 'forward' | 'backward'
+const scrollPositions = new Map()
+let lastHistoryPos = typeof window !== 'undefined' ? window.history.state?.position ?? 0 : 0
 
 // The SPA is served by Frappe under /gotrain, so vue-router's base is /gotrain.
 const routes = [
@@ -32,15 +41,39 @@ const routes = [
 export const router = createRouter({
   history: createWebHistory('/gotrain'),
   routes,
-  scrollBehavior(_to, _from, savedPosition) {
-    return savedPosition || { top: 0 }
+  scrollBehavior(to, _from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (navDirection.value === 'backward' || to.meta.tab) {
+      const saved = scrollPositions.get(to.fullPath)
+      if (saved != null) return { top: saved }
+    }
+    return { top: 0 }
   },
 })
 
-router.beforeEach((to) => {
+router.beforeEach((to, from) => {
+  if (typeof window !== 'undefined' && from.fullPath) {
+    scrollPositions.set(from.fullPath, window.scrollY || 0)
+  }
+
   if (to.meta.public) return true
-  // Auth is a Frappe session; without it, show the in-app Go Train login.
-  if (!session.user) return { path: '/login', query: to.fullPath !== '/' ? { 'redirect-to': to.fullPath } : {} }
+  if (!session.user) {
+    return { path: '/login', query: to.fullPath !== '/' ? { 'redirect-to': to.fullPath } : {} }
+  }
   if (to.meta.coach && !isCoach()) return { path: '/' }
   return true
+})
+
+router.afterEach((to, from) => {
+  if (typeof window === 'undefined') return
+  const currentPos = window.history.state?.position ?? lastHistoryPos
+  if (to.meta.tab && from.meta.tab) {
+    navDirection.value = 'tab'
+  } else if (currentPos < lastHistoryPos) {
+    navDirection.value = 'backward'
+  } else {
+    navDirection.value = 'forward'
+  }
+  lastHistoryPos = currentPos
+  document.documentElement.dataset.direction = navDirection.value
 })
