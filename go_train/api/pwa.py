@@ -1196,7 +1196,7 @@ def get_classes():
 		s["my_booking"] = mine.get(s.name)
 		if s.coach:
 			s["coach_name"] = coach_names.get(s.coach, s.coach)
-		s["color"] = "#F23D46"
+		s["color"] = "#FED14F"
 
 	checked_in_today = bool(
 		member

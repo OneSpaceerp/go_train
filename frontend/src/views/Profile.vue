@@ -146,7 +146,7 @@ const links = computed(() => [
       <p class="text-sm text-ink-mute">{{ u?.email }}</p>
 
       <div class="flex flex-wrap items-center justify-center gap-2 mt-2.5">
-        <span class="pill text-brand-700 border-brand-200 bg-brand-50 capitalize">
+        <span class="pill text-accent-ink border-accent/60 bg-accent-soft capitalize">
           {{ u?.role === 'coach' ? 'Coach' : 'Athlete' }}
         </span>
         <span
@@ -250,7 +250,7 @@ const links = computed(() => [
     <div class="card divide-y divide-line overflow-hidden">
       <!-- Push & Timer Notifications -->
       <div v-if="notificationSupported" class="flex items-center gap-3 p-4 min-h-[56px]">
-        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-accent-ink shrink-0">
           <Icon name="bell" :size="18" />
         </div>
         <div class="flex-1 min-w-0">
@@ -287,7 +287,7 @@ const links = computed(() => [
 
       <!-- Screen Wake Lock -->
       <div v-if="wakeLockSupported" class="flex items-center gap-3 p-4 min-h-[56px]">
-        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-accent-ink shrink-0">
           <Icon name="flame" :size="18" />
         </div>
         <div class="flex-1 min-w-0">
@@ -299,7 +299,7 @@ const links = computed(() => [
         <button
           type="button"
           class="btn-soft !px-4 text-sm shrink-0"
-          :class="wakeLockActive ? '!bg-brand-650 !text-white' : ''"
+          :class="wakeLockActive ? '!bg-accent !text-accent-on' : ''"
           @click="toggleWakeLock()"
         >
           {{ wakeLockActive ? 'Awake On' : 'Auto' }}
@@ -308,7 +308,7 @@ const links = computed(() => [
 
       <!-- Offline Storage & App Installation Status -->
       <div class="flex items-center gap-3 p-4 min-h-[56px]">
-        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-accent-ink shrink-0">
           <Icon name="download" :size="18" />
         </div>
         <div class="flex-1 min-w-0">

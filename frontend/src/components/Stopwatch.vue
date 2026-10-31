@@ -144,7 +144,7 @@ const progressPct = computed(() => {
         class="min-h-[40px] px-3.5 rounded-full text-xs font-semibold border transition"
         :class="
           countdownTotal === p.seconds
-            ? 'bg-brand-650 text-white border-brand-650'
+            ? 'bg-accent text-accent-on border-accent'
             : 'bg-surface border-line text-ink-soft'
         "
         @click="selectPreset(p.seconds)"
@@ -163,7 +163,7 @@ const progressPct = computed(() => {
         class="mt-4 mx-auto max-w-[16rem] h-2 rounded-full bg-surface-sunk overflow-hidden"
       >
         <div
-          class="h-full bg-brand-600 transition-all duration-300"
+          class="h-full bg-accent transition-all duration-300"
           :style="{ width: `${progressPct}%` }"
         ></div>
       </div>

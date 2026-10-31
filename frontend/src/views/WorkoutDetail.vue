@@ -432,10 +432,10 @@ onUnmounted(() => {
 <template>
   <Scaffold :title="w?.title || t('workout.title', 'Workout')" :subtitle="w?.scheduled_on ? niceDate(w.scheduled_on) : ''" back :onRefresh="load">
     <template #actions>
-      <button v-if="!coachMode" type="button" class="icon-btn text-brand-650" :aria-label="t('workout.timerBtn', 'Timer')" @click="haptics.tap(); showTimer = true">
+      <button v-if="!coachMode" type="button" class="icon-btn text-accent-ink" :aria-label="t('workout.timerBtn', 'Timer')" @click="haptics.tap(); showTimer = true">
         <Icon name="timer" :size="22" />
       </button>
-      <button type="button" class="icon-btn text-brand-650" :aria-label="t('common.more', 'More')" @click="haptics.tap(); showMore = true">
+      <button type="button" class="icon-btn text-accent-ink" :aria-label="t('common.more', 'More')" @click="haptics.tap(); showMore = true">
         <Icon name="more" :size="22" />
       </button>
     </template>
@@ -462,7 +462,7 @@ onUnmounted(() => {
         <button type="button" class="icon-btn" :disabled="matchCount < 2" :aria-label="t('workout.nextMatch', 'Next match')" @click="step(1)">
           <Icon name="chevron" :size="18" class="rotate-90" />
         </button>
-        <button type="button" class="text-[0.9375rem] font-medium text-brand-650 min-h-[44px] px-1" @click="closeFind">{{ t('nav.done') }}</button>
+        <button type="button" class="text-[0.9375rem] font-medium text-accent-ink min-h-[44px] px-1" @click="closeFind">{{ t('nav.done') }}</button>
       </div>
 
       <!-- Rest timer: stays pinned under the bar while you scroll -->
@@ -618,7 +618,7 @@ onUnmounted(() => {
         <section v-if="!coachMode" class="card p-4 space-y-3">
           <div class="flex items-center justify-between gap-2">
             <p class="section-label">{{ t('workout.yourResult', 'Your result') }}</p>
-            <span v-if="rpe" class="text-xs font-semibold text-brand-650 truncate">RPE {{ rpe }} · {{ RPE_DESC[rpe] }}</span>
+            <span v-if="rpe" class="text-xs font-semibold text-accent-ink truncate">RPE {{ rpe }} · {{ RPE_DESC[rpe] }}</span>
           </div>
           <textarea v-model="result" rows="2" class="field py-3" dir="auto" :placeholder="t('workout.resultPlaceholder', 'Score, e.g. 12:34 Rx or 5 rounds + 8')"></textarea>
           <textarea v-model="details" rows="2" class="field py-3" dir="auto" :placeholder="t('workout.detailsPlaceholder', 'Scaling, how it felt…')"></textarea>
@@ -643,7 +643,7 @@ onUnmounted(() => {
 
           <div class="flex items-center gap-2 flex-wrap">
             <span v-if="duration != null" class="chip !pe-1">
-              <Icon name="clock" :size="16" class="text-brand-650" /> {{ durationLabel }}
+              <Icon name="clock" :size="16" class="text-accent-ink" /> {{ durationLabel }}
               <button type="button" class="icon-btn !w-8 !h-8 !min-w-[32px] !min-h-[32px]" :aria-label="t('workout.clearDuration', 'Clear duration')" @click="duration = null">
                 <Icon name="x" :size="14" />
               </button>
@@ -673,7 +673,7 @@ onUnmounted(() => {
           </div>
           <form class="flex gap-2 mt-3" @submit.prevent="addComment">
             <input v-model="comment" class="field flex-1" enterkeyhint="send" :placeholder="t('workout.commentPlaceholder', 'Ask your coach or leave a note…')" dir="auto" />
-            <button type="submit" class="icon-btn bg-brand-650 text-white !w-[50px] !h-[50px] shrink-0" :aria-label="t('workout.sendComment', 'Send note')">
+            <button type="submit" class="icon-btn bg-accent text-accent-on !w-[50px] !h-[50px] shrink-0" :aria-label="t('workout.sendComment', 'Send note')">
               <Icon name="send" :size="18" />
             </button>
           </form>

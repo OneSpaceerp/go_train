@@ -33,6 +33,13 @@ html.has-tabbar { --tabbar-space: 5.75rem; }
   --bad: 196 30 50;       /* #C41E32 — 5.89:1 on white */
   --field: 158 168 186;
   --glass-bg: rgba(255, 255, 255, 0.86);
+  /* Sunshine accent (logo #FED14F). Yellow never carries white text:
+     fills use --on-accent (12.4:1); accent text uses --accent-ink (5.8:1 on white). */
+  --accent: 254 209 79;      /* #FED14F */
+  --accent-press: 242 190 34;/* #F2BE22 */
+  --on-accent: 27 22 6;      /* #1B1606 */
+  --accent-ink: 135 94 0;    /* #875E00 */
+  --accent-soft: 255 246 214;/* #FFF6D6 */
   --glass-border: rgba(255, 255, 255, 0.65);
 }
 
@@ -51,6 +58,8 @@ html.has-tabbar { --tabbar-space: 5.75rem; }
     --bad: 255 110 122;
     --field: 66 74 90;
     --glass-bg: rgba(22, 24, 31, 0.88);
+    --accent-ink: 254 209 79;   /* yellow reads 13:1 on the dark page */
+    --accent-soft: 52 45 20;    /* #342D14 */
     --glass-border: rgba(255, 255, 255, 0.09);
   }
 }
@@ -69,6 +78,8 @@ html.has-tabbar { --tabbar-space: 5.75rem; }
   --bad: 255 110 122;
   --field: 66 74 90;
   --glass-bg: rgba(22, 24, 31, 0.88);
+  --accent-ink: 254 209 79;
+  --accent-soft: 52 45 20;
   --glass-border: rgba(255, 255, 255, 0.09);
 }
 
@@ -147,19 +158,19 @@ button, a, [role="button"], input, select, textarea {
     @apply inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-full font-semibold text-[0.9375rem] transition duration-150 active:scale-[0.97] disabled:opacity-50 select-none;
   }
   .btn-primary {
-    @apply btn bg-brand-650 text-white shadow-sm active:bg-brand-700;
+    @apply btn bg-accent text-accent-on shadow-sm active:bg-accent-press;
   }
   .btn-outline {
     @apply btn bg-surface text-ink border border-line active:bg-surface-sunk;
   }
   .btn-soft {
-    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-full font-semibold text-[0.875rem] bg-brand-50 text-brand-700 transition duration-150 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-full font-semibold text-[0.875rem] bg-accent-soft text-accent-ink transition duration-150 active:scale-[0.97];
   }
   .icon-btn {
     @apply inline-grid place-items-center min-w-[44px] min-h-[44px] w-11 h-11 rounded-full text-ink-soft transition duration-150 active:bg-surface-sunk active:scale-95;
   }
   .field {
-    @apply w-full min-h-[50px] px-4 rounded-field border border-line bg-surface text-ink text-base outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-500/20;
+    @apply w-full min-h-[50px] px-4 rounded-field border border-line bg-surface text-ink text-base outline-none transition focus:border-accent-ink focus:ring-2 focus:ring-accent/40;
   }
   .pill {
     @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[0.8125rem] font-semibold border;
@@ -167,18 +178,6 @@ button, a, [role="button"], input, select, textarea {
   .section-label {
     @apply text-[0.75rem] font-bold uppercase tracking-wider text-ink-soft;
   }
-}
-
-/* Dark mode overrides for soft brand surfaces */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .btn-soft {
-    background: rgba(242, 61, 70, 0.16);
-    color: #FF9CA1;
-  }
-}
-:root[data-theme='dark'] .btn-soft {
-  background: rgba(242, 61, 70, 0.16);
-  color: #FF9CA1;
 }
 
 /* No blur support: glass would only be see-through, so make bars solid */
@@ -252,7 +251,7 @@ html.sheet-open { overflow: hidden; }
   border: 1px solid transparent;
   text-align: start;
 }
-.banner--brand { width: 100%; background: #D92632; color: #fff; font-weight: 600; }
+.banner--brand { width: 100%; background: rgb(var(--accent)); color: rgb(var(--on-accent)); font-weight: 600; }
 .banner--warn { background: rgb(var(--warn) / 0.1); color: rgb(var(--warn)); border-color: rgb(var(--warn) / 0.25); }
 .banner--ok { background: rgb(var(--ok) / 0.1); color: rgb(var(--ok)); border-color: rgb(var(--ok) / 0.25); }
 .banner--bad { align-items: flex-start; background: rgb(var(--bad) / 0.1); color: rgb(var(--bad)); border-color: rgb(var(--bad) / 0.25); }
@@ -330,7 +329,7 @@ html.sheet-open { overflow: hidden; }
   max-width: 100%;
   padding-inline: 0.25rem 0.5rem;
   border-radius: 999px;
-  color: #D92632;
+  color: rgb(var(--accent-ink));
   font-size: 1.0625rem;
   transition: opacity 120ms ease;
 }
@@ -378,7 +377,7 @@ html.sheet-open { overflow: hidden; }
   color: rgb(var(--ink-mute));
   transition: color 150ms ease;
 }
-.ptr-spinner.is-armed { color: #D92632; }
+.ptr-spinner.is-armed { color: rgb(var(--accent-ink)); }
 
 /* Tab bar: floating Liquid Glass capsule ---------------------------------- */
 .tabbar {
@@ -409,7 +408,8 @@ html.sheet-open { overflow: hidden; }
   inset-inline-start: 4px;
   width: calc((100% - 8px) / var(--tabs));
   border-radius: 999px;
-  background: rgb(242 61 70 / 0.11);
+  background: rgb(var(--accent));
+  box-shadow: 0 2px 8px -2px rgb(var(--accent-press) / 0.6);
   transform: translateX(calc(var(--active) * 100% * var(--dir-x)));
   transition: transform 460ms var(--ease-spring);
 }
@@ -431,7 +431,7 @@ html.sheet-open { overflow: hidden; }
   transition: color 160ms ease, transform 140ms var(--ease-ios);
 }
 .tabbar-item:active { transform: scale(0.92); }
-.tabbar-item.is-active { color: #D92632; }
+.tabbar-item.is-active { color: rgb(var(--on-accent)); }
 .tabbar-label {
   max-width: 100%;
   font-size: 0.65625rem;
@@ -543,7 +543,7 @@ html.sheet-open { overflow: hidden; }
   min-height: 44px;
   padding-inline: 0.5rem;
   font-size: 1.0625rem;
-  color: #D92632;
+  color: rgb(var(--accent-ink));
 }
 .sheet-cancel:active { opacity: 0.45; }
 .sheet-body {
@@ -562,7 +562,7 @@ html.sheet-open { overflow: hidden; }
 /* Press feedback & focus --------------------------------------------------- */
 .pressable { transition: transform 120ms var(--ease-ios); }
 .pressable:active { transform: scale(0.97); }
-:focus-visible { outline: 2.5px solid #F23D46; outline-offset: 2px; }
+:focus-visible { outline: 2.5px solid rgb(var(--accent-ink)); outline-offset: 2px; }
 [data-screen-title]:focus-visible { outline-offset: 4px; border-radius: 6px; }
 
 /* Screen transitions (View Transitions API, driven by router.js) ------------
@@ -667,14 +667,14 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   padding: 0 0.875rem;
   border-radius: 12px;
   background: rgb(var(--sunk));
-  color: #D92632;
+  color: rgb(var(--accent-ink));
   font-size: 0.9375rem;
   font-weight: 600;
   transition: transform 120ms var(--ease-ios), background-color 150ms ease;
 }
 .add-row:active { transform: scale(0.97); }
 
-.sheet-done { min-height: 44px; padding-inline: 0.5rem; font-size: 1.0625rem; font-weight: 600; color: #D92632; }
+.sheet-done { min-height: 44px; padding-inline: 0.5rem; font-size: 1.0625rem; font-weight: 600; color: rgb(var(--accent-ink)); }
 .sheet-done:disabled { opacity: 0.4; }
 
 /* Number stepper */
@@ -688,7 +688,7 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   background: rgb(var(--surface));
   overflow: hidden;
 }
-.stepper button { height: 100%; min-height: 48px; display: grid; place-items: center; color: #D92632; }
+.stepper button { height: 100%; min-height: 48px; display: grid; place-items: center; color: rgb(var(--accent-ink)); }
 .stepper button:active { background: rgb(var(--sunk)); }
 .stepper output { text-align: center; font-size: 1.125rem; font-weight: 700; }
 
@@ -762,7 +762,7 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   font-variant-numeric: tabular-nums;
   outline: none;
 }
-.set-input:focus { border-color: #F23D46; box-shadow: 0 0 0 3px rgb(242 61 70 / 0.18); }
+.set-input:focus { border-color: rgb(var(--accent-ink)); box-shadow: 0 0 0 3px rgb(var(--accent) / 0.45); }
 .set-check {
   width: 48px;
   height: 44px;
@@ -788,7 +788,7 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   transition: transform 120ms var(--ease-ios);
 }
 .rpe-btn:active { transform: scale(0.94); }
-.rpe-btn.is-selected { background: #D92632; color: #fff; }
+.rpe-btn.is-selected { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
 
 /* Rest timer pinned under the navigation bar */
 .rest-bar {
@@ -814,7 +814,7 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   font-weight: 700;
   font-size: 0.875rem;
 }
-.rest-btn--primary { background: #F23D46; }
+.rest-btn--primary { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
 
 /* Sticky bottom action bar (screens without the tab bar) */
 .action-bar {

@@ -17,13 +17,13 @@ onMounted(async () => {
     <EmptyState v-else-if="!promos.length" icon="tag" title="No promos right now" />
     <div v-else class="pt-4 space-y-3">
       <div v-for="p in promos" :key="p.id" class="card p-4 flex items-center gap-4">
-        <div class="w-14 h-14 rounded-xl bg-brand-600 text-white grid place-items-center font-bold text-lg shrink-0">
+        <div class="w-14 h-14 rounded-xl bg-accent text-accent-on grid place-items-center font-bold text-lg shrink-0">
           {{ p.percent_off }}%
         </div>
         <div class="flex-1 min-w-0">
           <p class="font-semibold">{{ p.title }}</p>
           <p class="text-sm text-ink-soft">{{ p.description }}</p>
-          <span v-if="p.code" class="pill mt-2 text-brand-700 border-brand-200 bg-brand-50 font-mono tracking-wide">{{ p.code }}</span>
+          <span v-if="p.code" class="pill mt-2 text-accent-ink border-accent/60 bg-accent-soft font-mono tracking-wide">{{ p.code }}</span>
           <p v-if="p.valid_until" class="text-xs text-ink-mute mt-1.5">Valid until {{ p.valid_until }}</p>
         </div>
       </div>

@@ -30,6 +30,9 @@ website_route_rules = [
 	{"from_route": "/gotrain/<path:app_path>", "to_route": "gotrain"},
 ]
 
+# Digital Asset Links for the Android (Play Store) app; see go_train/well_known.py
+before_request = ["go_train.well_known.serve_assetlinks"]
+
 # Seed gym roles and starter reference data on install & migrate
 after_install = "go_train.setup.install.after_install"
 after_migrate = "go_train.setup.install.after_install"

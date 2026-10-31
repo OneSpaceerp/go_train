@@ -9,6 +9,7 @@
     "build": "vite build && node copy-entry.js",
     "preview": "vite preview",
     "icons": "node scripts/make-icons.js",
+    "android-settings": "node scripts/android-settings.js",
     "test": "vitest run"
   },
   "dependencies": {

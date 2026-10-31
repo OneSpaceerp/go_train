@@ -51,7 +51,7 @@ const embed = computed(() => {
       >
         <Icon name="link" :size="18" /> {{ t('media.openLink', 'Open video link') }}
       </a>
-      <a v-else-if="kind === 'youtube'" :href="item.video_url" target="_blank" rel="noopener" class="block text-center text-sm font-medium text-brand-650 py-2">
+      <a v-else-if="kind === 'youtube'" :href="item.video_url" target="_blank" rel="noopener" class="block text-center text-sm font-medium text-accent-ink py-2">
         {{ t('media.openYoutube', 'Open in YouTube') }}
       </a>
       <p v-if="item.note" class="text-[0.9375rem] text-ink-soft whitespace-pre-line selectable" dir="auto">{{ item.note }}</p>

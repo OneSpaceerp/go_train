@@ -5,6 +5,7 @@
 //    /api/method/go_train.api.pwa.sw, where relative URLs would 404; vite.config.js
 //    inlines the Workbox runtime and prefixes precache URLs; the web manifest
 //    entry is added by vite-plugin-pwa after that step, so it is prefixed here.
+// 3. Mirror the web manifest to the repo root (see below).
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +19,16 @@ const swPath = resolve(outDir, 'sw.js')
 mkdirSync(dirname(dest), { recursive: true })
 copyFileSync(src, dest)
 console.log('Copied', src, '->', dest)
+
+// 3. Mirror the web manifest to the repo root as manifest.json. Frappe serves the real
+//    one from /assets/go_train/frontend/; this copy is only for tooling such as
+//    PWABuilder Studio, which looks for a manifest at the workspace root.
+const manifestPath = resolve(outDir, 'manifest.webmanifest')
+if (existsSync(manifestPath)) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  writeFileSync(resolve(here, '../manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8')
+  console.log('Mirrored manifest to manifest.json')
+}
 
 if (existsSync(swPath)) {
   const sw = readFileSync(swPath, 'utf8').replace(

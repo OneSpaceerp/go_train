@@ -24,7 +24,7 @@ export default defineConfig({
         display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
         orientation: 'portrait-primary',
         background_color: '#0B0C10',
-        theme_color: '#D92632',
+        theme_color: '#FED14F',
         lang: 'en',
         dir: 'auto',
         categories: ['fitness', 'health', 'sports', 'lifestyle'],
@@ -60,6 +60,12 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
+          },
+          {
+            src: '/assets/go_train/images/icon-monochrome-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'monochrome',
           },
         ],
         screenshots: [

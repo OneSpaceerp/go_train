@@ -96,7 +96,7 @@ function capacityPct(s) {
     <div
       v-if="data.can_self_checkin"
       class="card p-4 mt-3 flex items-center justify-between gap-3 border-l-4"
-      :class="data.checked_in_today ? 'border-l-ok' : 'border-l-brand-600'"
+      :class="data.checked_in_today ? 'border-l-ok' : 'border-l-accent'"
     >
       <div class="flex items-center gap-3 min-w-0">
         <div
@@ -104,7 +104,7 @@ function capacityPct(s) {
           :class="
             data.checked_in_today
               ? 'bg-ok/15 text-ok'
-              : 'bg-brand-50 text-brand-700'
+              : 'bg-accent-soft text-accent-ink'
           "
         >
           <Icon :name="data.checked_in_today ? 'check' : 'qr'" :size="21" />
@@ -170,7 +170,7 @@ function capacityPct(s) {
             <div class="flex items-center gap-2">
               <span
                 class="w-2.5 h-2.5 rounded-full shrink-0"
-                :style="{ backgroundColor: s.color || '#F23D46' }"
+                :style="{ backgroundColor: s.color || 'rgb(var(--accent))' }"
               ></span>
               <h3 class="font-bold text-ink text-base truncate">{{ s.title }}</h3>
             </div>
@@ -194,7 +194,7 @@ function capacityPct(s) {
           <div class="h-1.5 w-full rounded-full bg-surface-sunk overflow-hidden">
             <div
               class="h-full rounded-full transition-all duration-300"
-              :class="s.spots_left <= 2 ? 'bg-warn' : 'bg-brand-600'"
+              :class="s.spots_left <= 2 ? 'bg-warn' : 'bg-accent'"
               :style="{ width: `${capacityPct(s)}%` }"
             ></div>
           </div>

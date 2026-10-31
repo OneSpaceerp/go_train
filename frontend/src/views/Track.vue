@@ -156,7 +156,7 @@ const quickMetrics = [
               cy="18"
               r="15.5"
               fill="none"
-              stroke="#F23D46"
+              style="stroke: rgb(var(--accent))"
               stroke-width="3.4"
               stroke-linecap="round"
               :stroke-dasharray="`${insights.completion} 100`"
@@ -220,7 +220,7 @@ const quickMetrics = [
       >
         <div class="flex items-baseline justify-between gap-2 mb-2">
           <div class="flex items-center gap-2 min-w-0">
-            <div class="w-8 h-8 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0">
+            <div class="w-8 h-8 rounded-xl bg-accent-soft text-accent-ink grid place-items-center shrink-0">
               <Icon name="trophy" :size="16" />
             </div>
             <p class="font-bold text-ink truncate">{{ s.metric }}</p>
@@ -245,11 +245,11 @@ const quickMetrics = [
           preserveAspectRatio="none"
           class="w-full h-16 my-1"
         >
-          <path :d="areaPath(s.points)" fill="rgba(242, 61, 70, 0.10)" />
+          <path :d="areaPath(s.points)" style="fill: rgb(var(--accent) / 0.35)" />
           <path
             :d="path(s.points)"
             fill="none"
-            stroke="#F23D46"
+            style="stroke: rgb(var(--accent-ink))"
             stroke-width="2.2"
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -289,7 +289,7 @@ const quickMetrics = [
               class="min-h-[44px] px-3 rounded-full text-xs font-semibold transition"
               :class="
                 metric === qm
-                  ? 'bg-brand-650 text-white'
+                  ? 'bg-accent text-accent-on'
                   : 'bg-surface-sunk text-ink-soft'
               "
               @click="haptics.select(); metric = qm"

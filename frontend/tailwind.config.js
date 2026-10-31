@@ -1,8 +1,8 @@
 /**
  * Go Train design tokens — Apple HIG & WCAG AA calibrated.
- * Light & Dark semantic channels support <alpha-value>; coral accent provides
- * unmistakable interactive affordance while brand-650 (#D92632) guarantees
- * >= 4.68:1 contrast with white label text.
+ * Light & Dark semantic channels support <alpha-value>. The Sunshine accent
+ * (#FED14F, from the logo) fills primary controls with dark text; accent text
+ * uses the deeper amber ink so it stays >= 4.5:1 on light surfaces.
  */
 export default {
   content: ['./index.html', './src/**/*.{vue,js}'],
@@ -16,16 +16,25 @@ export default {
         spring: 'cubic-bezier(0.22, 1.2, 0.36, 1)',
       },
       colors: {
+        // Sunshine palette from the logo. Prefer the semantic `accent` roles:
+        // bg-accent + text-accent-on for fills, text-accent-ink for accent text.
+        accent: {
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          press: 'rgb(var(--accent-press) / <alpha-value>)',
+          on: 'rgb(var(--on-accent) / <alpha-value>)',
+          ink: 'rgb(var(--accent-ink) / <alpha-value>)',
+          soft: 'rgb(var(--accent-soft) / <alpha-value>)',
+        },
         brand: {
-          50: '#FFF0F1',
-          100: '#FFDDDF',
-          200: '#FFC2C5',
-          300: '#FF9CA1',
-          400: '#FF7E84',
-          500: '#FB5A5F',
-          600: '#F23D46',
-          650: '#D92632', // 4.68:1 contrast vs #FFFFFF (WCAG AA compliant CTA fill)
-          700: '#BE1E28',
+          50: '#FFF6D6',
+          100: '#FFEDB0',
+          200: '#FFE38A',
+          300: '#FFDA6A',
+          400: '#FED45A',
+          500: '#FED14F',
+          600: '#F2BE22',
+          650: '#C99600',
+          700: '#875E00',
         },
         ink: {
           DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
@@ -60,7 +69,7 @@ export default {
         card: '0 6px 20px -8px rgba(20, 24, 40, 0.08), 0 1px 3px rgba(20, 24, 40, 0.04)',
         nav: '0 -8px 28px -12px rgba(15, 20, 35, 0.14)',
         dock: '0 12px 32px -8px rgba(15, 20, 35, 0.22), 0 2px 8px rgba(15, 20, 35, 0.08)',
-        fab: '0 10px 24px -6px rgba(217, 38, 50, 0.48)',
+        fab: '0 10px 24px -6px rgba(201, 150, 0, 0.45)',
       },
       screens: { standalone: { raw: '(display-mode: standalone)' } },
     },
