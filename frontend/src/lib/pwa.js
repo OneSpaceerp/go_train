@@ -83,12 +83,12 @@ export function setUnreadBadge(count) {
 export function registerPwaServiceWorker(router) {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
-  window.addEventListener('load', async () => {
+  // main.js calls this after async boot work, often after `load` has fired
+  const onLoad = async () => {
     try {
-      const reg = await navigator.serviceWorker.register(
-        '/api/method/go_train.api.pwa.sw',
-        { scope: '/gotrain' },
-      )
+      // index.html starts the registration; fall back for pages without it (tests, dev)
+      const reg = await (window.goTrainSW ||
+        navigator.serviceWorker.register('/api/method/go_train.api.pwa.sw', { scope: '/gotrain' }))
 
       if (reg.waiting) {
         waitingWorker = reg.waiting
@@ -111,7 +111,9 @@ export function registerPwaServiceWorker(router) {
         reg.update().catch(() => {})
       }, 60 * 60 * 1000)
     } catch {}
-  })
+  }
+  if (document.readyState === 'complete') onLoad()
+  else window.addEventListener('load', onLoad)
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloadingForSw) return

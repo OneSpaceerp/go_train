@@ -11,3 +11,9 @@ frontend/dev-dist/
 .DS_Store
 *.log
 .agents/
+
+# Android packaging (PWABuilder): per-site settings and signing keys stay out of git
+android-settings.json
+*.keystore
+*.jks
+signing-key-info.txt

@@ -329,7 +329,7 @@
         .splash-bar-fill { animation: none; transform: scaleX(1); }
       }
     </style>
-    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-BNzM-nYf.js"></script>
+    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-BghLwaDk.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/go_train/frontend/assets/index-BLRFeyDA.css">
   <link rel="manifest" href="/assets/go_train/frontend/manifest.webmanifest"></head>
   <body>
@@ -400,6 +400,17 @@
           if (sub) sub.textContent = 'تدرّب · تتبّع · تقدّم';
         }
       } catch (e) {}
+
+      // Register the service worker from the page itself, so it installs even if the
+      // app bundle fails to load; lib/pwa.js reuses this registration for updates.
+      if ('serviceWorker' in navigator) {
+        window.goTrainSW = new Promise(function (resolve, reject) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/api/method/go_train.api.pwa.sw', { scope: '/gotrain' }).then(resolve, reject);
+          });
+        });
+        window.goTrainSW.catch(function () {});
+      }
     </script>
 
     <div id="app"></div>

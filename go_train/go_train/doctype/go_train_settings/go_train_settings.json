@@ -18,7 +18,11 @@
   "members_can_self_checkin",
   "show_progress_charts",
   "col2",
-  "pwa_welcome_message"
+  "pwa_welcome_message",
+  "sec_android",
+  "android_package_name",
+  "col3",
+  "android_sha256_fingerprints"
  ],
  "fields": [
   {
@@ -92,13 +96,36 @@
    "fieldname": "pwa_welcome_message",
    "fieldtype": "Small Text",
    "label": "Welcome message"
+  },
+  {
+   "fieldname": "sec_android",
+   "fieldtype": "Section Break",
+   "label": "Android App (Google Play)",
+   "collapsible": 1,
+   "description": "Fill these in after packaging the app with PWABuilder. Go Train then serves /.well-known/assetlinks.json so the Android app opens full-screen, without a browser address bar."
+  },
+  {
+   "fieldname": "android_package_name",
+   "fieldtype": "Data",
+   "label": "Package ID",
+   "description": "For example com.gotrain.app. Must match the package ID used when packaging."
+  },
+  {
+   "fieldname": "col3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "android_sha256_fingerprints",
+   "fieldtype": "Small Text",
+   "label": "SHA-256 signing fingerprints",
+   "description": "One per line, like AB:CD:…. Use the fingerprint from PWABuilder's assetlinks.json, and add Google Play's app signing key fingerprint (Play Console → Setup → App signing) once the app is uploaded."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "istable": 0,
  "links": [],
- "modified": "2026-10-25 00:00:00.000000",
+ "modified": "2026-10-31 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Go Train Settings",

@@ -63,6 +63,26 @@ cd frontend && npm test   # Vitest unit tests (offline queue, API layer, search)
 
 Offline behaviour: the service worker caches the `/gotrain` app shell, so the installed app opens without a network. Workout logs, progress entries and check-ins made offline are queued with the device time, and are replayed with idempotency keys when the device is back online.
 
+The build also writes `manifest.json` at the repo root: a copy of the real manifest, for tools such as PWABuilder Studio that look for one there. Don't edit it; change `frontend/vite.config.js` and rebuild.
+
+## Android app (Google Play)
+
+The Play Store app is a Trusted Web Activity: a thin Android shell around the live site at `https://<your-domain>/gotrain`, packaged with [PWABuilder](https://www.pwabuilder.com) (website or the PWABuilder Studio VS Code extension). The site must be live on HTTPS first.
+
+1. Generate the packaging settings from the built manifest:
+
+   ```bash
+   cd frontend
+   npm run android-settings -- https://<your-domain> com.gotrain.app 1.0.0 1
+   ```
+
+   This writes `android-settings.json` (git-ignored) with the icons, colours, shortcuts and start URL. The package ID can never change once the app is on Play.
+2. Package: in PWABuilder Studio choose **Package → Android**, enter `https://<your-domain>` and `https://<your-domain>/assets/go_train/frontend/manifest.webmanifest`, answer **Yes** to advanced settings, and replace the file it opens with the contents of `android-settings.json`. On pwabuilder.com, enter the site URL and copy the same values into the Android options.
+3. Keep the downloaded `signing.keystore` and `signing-key-info.txt` somewhere safe (not in git). Every future update must be signed with this key.
+4. In Desk, open **Go Train Settings → Android App** and enter the package ID and the SHA-256 fingerprint from the package's `assetlinks.json`. Go Train then serves `https://<your-domain>/.well-known/assetlinks.json`; without it, the app shows a browser address bar.
+5. After uploading to Google Play, add Play's app signing key fingerprint (Play Console → Setup → App signing) as a second line in the same field.
+6. For each update, bump the version code (`... 1.0.1 2`) and repackage with the same keystore (`signingMode: "mine"`).
+
 ## Tests
 
 ```bash
