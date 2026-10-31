@@ -181,7 +181,7 @@ const byDateStatus = computed(() => {
 const dotClass = (d) => {
   const s = byDateStatus.value[d.format('YYYY-MM-DD')]
   if (!s) return ''
-  return { missed: 'bg-bad', done: 'bg-ok', upcoming: 'bg-brand-500' }[s.status]
+  return { missed: 'bg-bad', done: 'bg-ok', upcoming: 'bg-accent' }[s.status]
 }
 
 // Workouts scheduled on the picked calendar day (checking both workouts & calendar).
@@ -262,7 +262,7 @@ function onPick(date) {
         <Icon name="bell" :size="20" />
         <span
           v-if="unreadNotifications > 0"
-          class="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-brand-600 ring-2 ring-surface"
+          class="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-accent ring-2 ring-surface"
         ></span>
       </RouterLink>
 
@@ -278,9 +278,9 @@ function onPick(date) {
     <!-- Native PWA Install Prompt Banner -->
     <div
       v-if="canPromptInstall"
-      class="card p-3.5 mb-3.5 flex items-center gap-3 bg-gradient-to-r from-brand-50/80 to-surface border-brand-200/60"
+      class="card p-3.5 mb-3.5 flex items-center gap-3 bg-gradient-to-r from-accent-soft/80 to-surface border-accent/60"
     >
-      <div class="w-10 h-10 rounded-xl bg-brand-650 text-white grid place-items-center shrink-0">
+      <div class="w-10 h-10 rounded-xl bg-accent text-accent-on grid place-items-center shrink-0">
         <Icon name="download" :size="19" />
       </div>
       <div class="flex-1 min-w-0">
@@ -308,7 +308,7 @@ function onPick(date) {
         </span>
         <button
           type="button"
-          class="text-xs font-semibold text-brand-600 min-h-[44px] px-2 flex items-center gap-1"
+          class="text-xs font-semibold text-accent-ink min-h-[44px] px-2 flex items-center gap-1"
           @click="showFullMonth = !showFullMonth"
         >
           <Icon name="calendar" :size="15" />
@@ -333,16 +333,16 @@ function onPick(date) {
           class="min-h-[58px] py-1.5 rounded-2xl flex flex-col items-center justify-between transition active:scale-95"
           :class="
             d.format('YYYY-MM-DD') === selectedDay
-              ? 'bg-brand-650 text-white shadow-sm'
+              ? 'bg-accent text-accent-on shadow-sm'
               : d.format('YYYY-MM-DD') === todayIso
-                ? 'bg-brand-50/70 text-ink ring-1 ring-brand-300'
+                ? 'bg-accent-soft/70 text-ink ring-1 ring-accent'
                 : 'text-ink hover:bg-surface-sunk'
           "
           @click="onPick(d.format('YYYY-MM-DD'))"
         >
           <span
             class="text-[0.6875rem] font-medium uppercase"
-            :class="d.format('YYYY-MM-DD') === selectedDay ? 'text-white/85' : 'text-ink-mute'"
+            :class="d.format('YYYY-MM-DD') === selectedDay ? 'text-accent-on/75' : 'text-ink-mute'"
           >
             {{ d.format('dd') }}
           </span>
@@ -363,9 +363,9 @@ function onPick(date) {
 
     <!-- Today's Hero Session Card -->
     <section v-if="heroWorkout" class="mb-4">
-      <div class="card p-4 border-l-4 border-l-brand-600">
+      <div class="card p-4 border-l-4 border-l-accent">
         <div class="flex items-center justify-between gap-2 mb-1.5">
-          <span class="section-label text-brand-600 flex items-center gap-1.5">
+          <span class="section-label text-accent-ink flex items-center gap-1.5">
             <Icon name="flame" :size="15" />
             {{ t('train.todayFocus') }}
           </span>
@@ -438,7 +438,7 @@ function onPick(date) {
       to="/programs"
       class="card p-3.5 mb-4 flex items-center gap-3 active:scale-[0.99] transition"
     >
-      <div class="w-11 h-11 rounded-xl bg-brand-650 text-white grid place-items-center shrink-0">
+      <div class="w-11 h-11 rounded-xl bg-accent text-accent-on grid place-items-center shrink-0">
         <Icon name="dumbbell" :size="21" />
       </div>
       <div class="flex-1 min-w-0">
@@ -459,7 +459,7 @@ function onPick(date) {
       <button
         v-if="hasDayFilter"
         type="button"
-        class="min-h-[44px] px-2 -me-2 text-sm font-semibold text-brand-650"
+        class="min-h-[44px] px-2 -me-2 text-sm font-semibold text-accent-ink"
         @click="selectedDay = ''"
       >
         Show all ({{ workouts.length }})
@@ -529,7 +529,7 @@ function onPick(date) {
         to="/classes"
         class="card p-3.5 flex items-center gap-3 active:scale-[0.98] transition"
       >
-        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-accent-soft text-accent-ink grid place-items-center shrink-0">
           <Icon name="calendar" :size="20" />
         </div>
         <div class="min-w-0">
@@ -587,11 +587,11 @@ function onPick(date) {
     >
       <div class="space-y-3 text-sm text-ink-soft pb-2">
         <div class="p-3.5 rounded-2xl bg-surface-sunk flex items-center gap-3">
-          <Icon name="share" :size="22" class="text-brand-600 shrink-0" />
+          <Icon name="share" :size="22" class="text-accent-ink shrink-0" />
           <span>{{ t('pwa.iosStep1') }}</span>
         </div>
         <div class="p-3.5 rounded-2xl bg-surface-sunk flex items-center gap-3">
-          <Icon name="plus" :size="22" class="text-brand-600 shrink-0" />
+          <Icon name="plus" :size="22" class="text-accent-ink shrink-0" />
           <span>{{ t('pwa.iosStep2') }}</span>
         </div>
         <div class="p-3.5 rounded-2xl bg-surface-sunk flex items-center gap-3">

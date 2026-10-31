@@ -97,7 +97,7 @@ function logPrFor(ex) {
         class="w-full flex items-center gap-3 p-4 text-left active:bg-surface-sunk transition"
         @click="openExercise(e)"
       >
-        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-accent-soft text-accent-ink grid place-items-center shrink-0">
           <Icon name="dumbbell" :size="19" />
         </div>
         <div class="flex-1 min-w-0">
@@ -124,7 +124,7 @@ function logPrFor(ex) {
     >
       <div v-if="selected" class="space-y-4 pb-2">
         <div class="flex flex-wrap gap-2">
-          <span v-if="selected.category" class="pill bg-brand-50 text-brand-700 border-brand-200">
+          <span v-if="selected.category" class="pill bg-accent-soft text-accent-ink border-accent/60">
             {{ selected.category }}
           </span>
           <span v-if="selected.primary_muscle" class="pill bg-surface-sunk text-ink-soft border-line">

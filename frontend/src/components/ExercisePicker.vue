@@ -72,7 +72,7 @@ function pick(row) {
           <span class="block text-xs text-ink-mute truncate">{{ [row.category, row.primary_muscle, row.equipment].filter(Boolean).join(' · ') }}</span>
         </span>
         <Icon v-if="exclude.includes(row.name)" name="check" :size="18" class="text-ok" />
-        <Icon v-else name="plus" :size="18" class="text-brand-650" />
+        <Icon v-else name="plus" :size="18" class="text-accent-ink" />
       </button>
       <p v-if="!loading && !rows.length" class="p-4 text-sm text-ink-mute text-center">
         {{ t('movement.none', 'No movements found.') }}

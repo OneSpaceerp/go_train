@@ -2,18 +2,19 @@
 name: Go Train
 description: Multi-sport fitness-space management on ERPNext v16, with a phone-native athlete PWA
 colors:
-  brand-coral: "#FB5A5F"
-  brand-coral-deep: "#F23D46"
-  brand-coral-press: "#D32731"
-  brand-coral-wash: "#FFF0F1"
-  midnight-ink: "#04002E"
-  slate-ink: "#4B5A6E"
-  muted-ink: "#707A8C"
+  sunshine: "#FED14F"
+  sunshine-press: "#F2BE22"
+  on-sunshine: "#1B1606"
+  amber-ink: "#875E00"
+  sunshine-wash: "#FFF6D6"
+  midnight-ink: "#0C1024"
+  slate-ink: "#3A4458"
+  muted-ink: "#566072"
   paper: "#FFFFFF"
   mist-page: "#F4F6FA"
-  hairline: "#D7DDE6"
-  status-done: "#17795A"
-  status-missed: "#D12A41"
+  hairline: "#DAE0EB"
+  status-done: "#127554"
+  status-missed: "#C41E32"
 typography:
   body: "system-ui, -apple-system, Segoe UI, Roboto, Cairo, sans-serif"
   display: "Poppins, Cairo, system-ui, sans-serif"
@@ -29,22 +30,41 @@ rounded:
 ## North star
 
 The Go Train PWA should feel like one of the phone's own apps, not a web page on
-top of ERPNext — the same calm, phone-first language as the Nest App, re-skinned
-to Go Train's coral. Desk keeps ERPNext's native look; the PWA is where the
+top of ERPNext — the same calm, phone-first language as the Nest App, in Go Train's
+Sunshine yellow. Desk keeps ERPNext's native look; the PWA is where the
 design system lives.
 
 ## Colors
 
-A quiet mist-and-paper world with **one** confident action colour.
+A quiet mist-and-paper world with **one** confident action colour: **Sunshine**,
+taken straight from the logo (`go_train/public/images/go_train_logo.svg`).
 
-- **Action Coral** (#FB5A5F): the only accent — primary buttons, active tab,
-  progress, links. *If it's coral, you can tap it.* Pressed: #F23D46 / #D32731.
-  Wash (#FFF0F1) for soft buttons and selected rows.
-- **Midnight Ink** (#04002E): all titles, values and names.
-- **Slate / Muted Ink**: secondary text, labels, placeholders.
-- **Mist Page** (#F4F6FA) behind white cards; **Hairline** (#D7DDE6) for dividers.
-- **Status:** Done green (#17795A), Missed red (#D12A41) — red is reserved for
-  missed/failed only.
+- **Sunshine** (#FED14F): fills primary buttons, the selected tab, the selected
+  day and RPE, and progress. *If it's yellow, you can tap it.* Pressed: #F2BE22.
+- **On Sunshine** (#1B1606): the only text colour on yellow (12.4:1).
+  **White never sits on yellow** (1.45:1).
+- **Amber Ink** (#875E00): accent text and icons on light surfaces, such as
+  back buttons, Cancel/Done, links and section accents (5.8:1 on white). In dark
+  mode accent text is Sunshine itself (13.5:1 on the dark page).
+- **Sunshine Wash** (#FFF6D6 light / #342D14 dark): soft buttons, chips and
+  selected rows, with Amber Ink text.
+- **Midnight Ink** (#0C1024): titles, values and names. **Slate / Muted Ink**:
+  secondary text.
+- **Mist Page** (#F4F6FA) behind white cards; **Hairline** for dividers.
+- **Status:** Done is green (#127554) and Missed is red (#C41E32). Red is
+  reserved for missed, failed and destructive actions only.
+
+Tokens live in `frontend/src/style.css` (`--accent`, `--on-accent`,
+`--accent-ink`, `--accent-soft`) and in Tailwind as `bg-accent`,
+`text-accent-on`, `text-accent-ink` and `bg-accent-soft`.
+
+## Logo & icons
+
+The vector master is `go_train_logo.svg` (the white dumbbell on a Sunshine tile,
+with a 43/250 corner radius), alongside the glyph-only `go_train_glyph.svg`.
+`npm run icons` renders every app icon from them: the any/maskable/monochrome
+manifest icons, the apple-touch-icon and the favicon. The Desk sprite
+(`public/icons/module-icons.svg`) uses the same dumbbell.
 
 ## Typography
 
@@ -55,7 +75,7 @@ never below 16px so iOS doesn't zoom. Arabic mirrors fully (RTL, 1.6 line-height
 
 ## Shape & depth
 
-Capsule buttons and pills (fully rounded), 24px cards, 14px fields, 32px sheet
+Capsule buttons and pills (fully rounded); primary buttons are Sunshine with dark labels, 24px cards, 14px fields, 32px sheet
 tops. Soft, wide, warm-grey shadows — never black in light mode. Light is the
 reference; dark follows the system (no in-app switch).
 
@@ -68,7 +88,7 @@ time. Safe-area insets honoured; the tab bar slides away with the keyboard.
 
 - **Tab bar:** a floating Liquid Glass capsule. Athletes get Train · Classes ·
   Track · Messages · Profile; coaches get Clients · Programs · Messages · Profile.
-  A coral lens slides to the active tab, and the active icon fills. At ≥ 840px
+  A Sunshine lens slides to the active tab, whose icon fills and turns dark. At ≥ 840px
   it becomes a left navigation rail. It stays visible on pushed screens and
   hides only for focused flows (chat) and sheets.
 - **Stacks per tab** (`lib/nav.js`): each tab remembers its own screen.
@@ -104,13 +124,14 @@ View Transitions also get a cut.
 
 ## Launch
 
-The PWA opens on a coral launch screen (`go_train/www/go_train.html`): the app
+The PWA opens on a dark launch screen with Sunshine glows (`go_train/www/go_train.html`): the app
 icon rises into focus over a dot grid, the name slides up, then the app fades in —
 "FROM nsdLabs" at the foot.
 
 ## Named rules
 
-- **Tap means coral.** Coral only on things that respond to a tap; values are ink.
+- **Tap means Sunshine.** Yellow only on things that respond to a tap; values are ink.
+- **Dark on yellow.** Text on Sunshine is always On Sunshine, never white.
 - **Red is final.** Missed/failed only — never "pending" or emphasis.
 - **One column, one sheet, one primary action** per screen.
 - **Back closes one layer.** A sheet, then the screen, then the tab's stack.

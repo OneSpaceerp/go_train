@@ -12,7 +12,7 @@ const classes = computed(() => ({
   ok: 'text-ok border-ok/30 bg-ok/10',
   bad: 'text-bad border-bad/30 bg-bad/10',
   warn: 'text-warn border-warn/30 bg-warn/10',
-  brand: 'text-brand-700 border-brand-200 bg-brand-50',
+  brand: 'text-accent-ink border-accent/60 bg-accent-soft',
   mute: 'text-ink-soft border-line bg-surface-sunk',
 }[info.value[1]]))
 </script>

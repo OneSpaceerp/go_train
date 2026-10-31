@@ -122,7 +122,7 @@ async function create() {
           ></textarea>
         </div>
         <label class="flex items-center gap-2.5 text-sm text-ink min-h-[44px]">
-          <input v-model="publish" type="checkbox" class="w-5 h-5 accent-brand-600" />
+          <input v-model="publish" type="checkbox" class="w-5 h-5 accent-accent-ink" />
           Publish to the Marketplace
         </label>
         <p v-if="error" class="text-bad text-sm" role="alert">{{ error }}</p>

@@ -37,7 +37,7 @@ const inMonth = (d) => d.month() === cursor.value.month()
 const dotClass = (d) => {
   const s = byDate.value[d.format('YYYY-MM-DD')]
   if (!s) return ''
-  return { missed: 'bg-bad', done: 'bg-ok', upcoming: 'bg-brand-500' }[s.status]
+  return { missed: 'bg-bad', done: 'bg-ok', upcoming: 'bg-accent' }[s.status]
 }
 
 function pick(d) {
@@ -80,7 +80,7 @@ const shift = (n) => {
         <button
           v-if="selected !== today || !cursor.isSame(dayjs(), 'month')"
           type="button"
-          class="min-h-[30px] px-2.5 rounded-full text-xs font-semibold bg-brand-50 text-brand-700"
+          class="min-h-[30px] px-2.5 rounded-full text-xs font-semibold bg-accent-soft text-accent-ink"
           @click="jumpToday"
         >
           {{ t('nav.today') }}
@@ -115,9 +115,9 @@ const shift = (n) => {
           class="w-9 h-9 grid place-items-center rounded-full text-sm tabular-nums transition"
           :class="[
             d.format('YYYY-MM-DD') === selected
-              ? 'bg-brand-650 text-white font-semibold shadow-sm'
+              ? 'bg-accent text-accent-on font-semibold shadow-sm'
               : d.format('YYYY-MM-DD') === today
-                ? 'ring-2 ring-brand-400 text-ink font-semibold'
+                ? 'ring-2 ring-accent text-ink font-semibold'
                 : inMonth(d)
                   ? 'text-ink'
                   : 'text-ink-mute/50',

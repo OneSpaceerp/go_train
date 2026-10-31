@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="theme-color" content="#070510" />
+    <meta name="theme-color" content="#0B0C10" />
     <meta name="color-scheme" content="light dark" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -11,7 +11,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Go Train" />
     <meta name="csrf-token" content="{{ csrf_token }}" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/assets/go_train/images/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/go_train/images/go_train_logo.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/go_train/images/favicon-32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/go_train/images/apple-touch-icon-180.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,7 +20,7 @@
     <title>Go Train</title>
     <style>
       /* Pre-bundle launch screen: inline so it paints on the first frame.
-         Choreographed ~3.4s athletic reveal with coral/amber auroras,
+         Choreographed ~3.4s athletic reveal with Sunshine yellow/amber auroras,
          concentric cadence rings, SVG perimeter light trace, and 4-stage ticker. */
       html, body { margin: 0; min-height: 100%; background: #F4F6FA; }
       @media (prefers-color-scheme: dark) {
@@ -31,7 +32,7 @@
         display: flex; flex-direction: column; align-items: center; justify-content: space-between;
         padding: calc(env(safe-area-inset-top, 0px) + 2.5rem) 1.5rem calc(env(safe-area-inset-bottom, 0px) + 2.25rem);
         background:
-          radial-gradient(115% 75% at 50% 0%, #2B0B17 0%, #120714 52%, #070510 100%);
+          radial-gradient(115% 75% at 50% 0%, #2A2209 0%, #14120B 52%, #0B0C10 100%);
         color: #fff; overflow: hidden; -moz-user-select: none; user-select: none; -webkit-user-select: none;
         font-family: Poppins, Cairo, system-ui, -apple-system, 'Segoe UI', sans-serif;
         transition: opacity .7s cubic-bezier(0.22, 1, 0.36, 1),
@@ -47,17 +48,17 @@
       }
       .splash-aurora-a {
         width: 24rem; height: 24rem; top: -7rem; left: -6rem;
-        background: radial-gradient(circle, rgba(242, 61, 70, 0.52) 0%, rgba(211, 39, 49, 0) 70%);
+        background: radial-gradient(circle, rgba(254, 209, 79, 0.42) 0%, rgba(242, 190, 34, 0) 70%);
         animation: splash-drift-a 7s ease-in-out infinite alternate;
       }
       .splash-aurora-b {
         width: 22rem; height: 22rem; bottom: -6rem; right: -5rem;
-        background: radial-gradient(circle, rgba(255, 152, 0, 0.34) 0%, rgba(242, 61, 70, 0.14) 48%, rgba(7, 5, 16, 0) 72%);
+        background: radial-gradient(circle, rgba(255, 179, 0, 0.30) 0%, rgba(254, 209, 79, 0.12) 48%, rgba(11, 12, 16, 0) 72%);
         animation: splash-drift-b 8s ease-in-out infinite alternate;
       }
       .splash-aurora-c {
         width: 16rem; height: 16rem; top: 36%; left: 50%; margin-left: -8rem; margin-top: -8rem;
-        background: radial-gradient(circle, rgba(251, 90, 95, 0.24) 0%, rgba(242, 61, 70, 0) 70%);
+        background: radial-gradient(circle, rgba(254, 209, 79, 0.22) 0%, rgba(254, 209, 79, 0) 70%);
         animation: splash-halo 3.4s ease-in-out infinite;
       }
 
@@ -79,13 +80,13 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         font-size: 0.68rem; font-weight: 600; letter-spacing: 0.16em;
-        text-transform: uppercase; color: rgba(255, 230, 232, 0.82);
+        text-transform: uppercase; color: rgba(255, 244, 214, 0.82);
         opacity: 0; transform: translateY(-8px);
         animation: splash-word .65s cubic-bezier(0.22, 1, 0.36, 1) .15s forwards;
       }
       .splash-top-dot {
         width: 6px; height: 6px; border-radius: 9999px;
-        background: #F23D46; box-shadow: 0 0 10px #F23D46;
+        background: #FED14F; box-shadow: 0 0 10px #FED14F;
         animation: splash-dot 1.4s ease-in-out infinite;
       }
 
@@ -105,7 +106,7 @@
       }
       .splash-rings span {
         position: absolute; inset: 0; border-radius: 9999px;
-        border: 1px solid rgba(242, 61, 70, 0.22);
+        border: 1px solid rgba(254, 209, 79, 0.24);
         opacity: 0;
         animation: splash-ring 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
       }
@@ -118,7 +119,7 @@
       /* Ambient glow behind icon */
       .splash-halo {
         position: absolute; inset: 6px; border-radius: 36px;
-        background: radial-gradient(circle, rgba(242, 61, 70, 0.58) 0%, rgba(255, 145, 0, 0.18) 55%, rgba(242, 61, 70, 0) 76%);
+        background: radial-gradient(circle, rgba(254, 209, 79, 0.55) 0%, rgba(255, 179, 0, 0.18) 55%, rgba(254, 209, 79, 0) 76%);
         filter: blur(20px);
         animation: splash-halo 2.8s ease-in-out infinite;
       }
@@ -127,7 +128,7 @@
       .splash-trace {
         position: absolute; inset: 12px; width: 116px; height: 116px;
         overflow: visible; pointer-events: none;
-        filter: drop-shadow(0 0 10px rgba(242, 61, 70, 0.7));
+        filter: drop-shadow(0 0 10px rgba(254, 209, 79, 0.7));
       }
       .splash-trace rect {
         fill: none; stroke: url(#splash-trace-ink); stroke-width: 2.25;
@@ -140,11 +141,11 @@
       .splash-icon {
         position: relative; width: 104px; height: 104px; border-radius: 26px;
         padding: 4px;
-        background: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(242, 61, 70, 0.18) 55%, rgba(255, 179, 0, 0.16));
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(254, 209, 79, 0.18) 55%, rgba(255, 179, 0, 0.16));
         box-shadow:
           0 24px 52px -12px rgba(0, 0, 0, 0.72),
           0 0 0 1px rgba(255, 255, 255, 0.12),
-          0 12px 32px -8px rgba(242, 61, 70, 0.5);
+          0 12px 32px -8px rgba(254, 209, 79, 0.45);
         overflow: hidden;
         opacity: 0; transform: translateY(14px) scale(0.86);
         animation:
@@ -166,7 +167,7 @@
       .splash-title {
         margin: 1.5rem 0 0; font-size: 1.85rem; font-weight: 700;
         letter-spacing: -0.02em; line-height: 1.15;
-        background: linear-gradient(180deg, #FFFFFF 0%, #FFE4E6 65%, #FFC2C5 100%);
+        background: linear-gradient(180deg, #FFFFFF 0%, #FFF1C2 65%, #FED14F 100%);
         -webkit-background-clip: text; background-clip: text; color: transparent;
         opacity: 0; transform: translateY(10px);
         animation: splash-word .7s cubic-bezier(0.22, 1, 0.36, 1) .55s forwards;
@@ -174,7 +175,7 @@
       .splash-sub {
         margin: 0.45rem 0 0; font-size: 0.78rem; font-weight: 600;
         letter-spacing: 0.22em; text-transform: uppercase;
-        color: rgba(255, 194, 197, 0.76);
+        color: rgba(255, 236, 179, 0.76);
         opacity: 0; transform: translateY(8px);
         animation: splash-word .7s cubic-bezier(0.22, 1, 0.36, 1) .75s forwards;
       }
@@ -193,7 +194,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: rgba(255, 255, 255, 0.78);
       }
-      .splash-chip strong { color: #FF9E80; font-weight: 600; }
+      .splash-chip strong { color: #FED14F; font-weight: 600; }
 
       /* Bottom progress & 4-stage status ticker */
       .splash-foot {
@@ -205,13 +206,13 @@
       }
       .splash-status {
         display: flex; align-items: center; justify-content: center; gap: 0.55rem;
-        font-size: 0.78rem; font-weight: 500; color: rgba(255, 235, 236, 0.78);
+        font-size: 0.78rem; font-weight: 500; color: rgba(255, 246, 220, 0.78);
         width: 100%;
       }
       .splash-dot {
         width: 7px; height: 7px; border-radius: 9999px; flex-shrink: 0;
-        background: #F23D46;
-        box-shadow: 0 0 12px #F23D46;
+        background: #FED14F;
+        box-shadow: 0 0 12px #FED14F;
         animation: splash-dot 1.2s ease-in-out infinite;
       }
       .splash-steps {
@@ -235,7 +236,7 @@
       }
       .splash-bar-fill {
         position: absolute; inset: 0; width: 100%; border-radius: inherit;
-        background: linear-gradient(90deg, #D32731 0%, #F23D46 50%, #FFB300 100%);
+        background: linear-gradient(90deg, #F2BE22 0%, #FED14F 55%, #FFF1C2 100%);
         transform-origin: left center; transform: scaleX(0.06);
         animation: splash-fill 3.1s cubic-bezier(0.22, 1, 0.36, 1) .15s forwards;
       }
@@ -328,8 +329,8 @@
         .splash-bar-fill { animation: none; transform: scaleX(1); }
       }
     </style>
-    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-Cx3H6Tcl.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/go_train/frontend/assets/index-B0hOy2_m.css">
+    <script type="module" crossorigin src="/assets/go_train/frontend/assets/index-BNzM-nYf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/go_train/frontend/assets/index-BLRFeyDA.css">
   <link rel="manifest" href="/assets/go_train/frontend/manifest.webmanifest"></head>
   <body>
     <div class="splash" data-splash role="status" aria-live="polite" aria-label="Loading Go Train">
@@ -350,9 +351,9 @@
           <svg class="splash-trace" viewBox="0 0 116 116" aria-hidden="true">
             <defs>
               <linearGradient id="splash-trace-ink" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#FFE082" />
-                <stop offset="50%" stop-color="#F23D46" />
-                <stop offset="100%" stop-color="#FF7E84" />
+                <stop offset="0%" stop-color="#FFF6D6" />
+                <stop offset="50%" stop-color="#FED14F" />
+                <stop offset="100%" stop-color="#F2BE22" />
               </linearGradient>
             </defs>
             <rect x="2" y="2" width="112" height="112" rx="28" pathLength="100" />

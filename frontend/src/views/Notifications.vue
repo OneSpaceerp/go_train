@@ -38,10 +38,10 @@ onMounted(load)
     <!-- Native OS Push Permission Prompt Banner -->
     <div
       v-if="notificationSupported && notificationPermission === 'default'"
-      class="card p-4 mt-3 flex items-center justify-between gap-3 border-brand-500/30"
+      class="card p-4 mt-3 flex items-center justify-between gap-3 border-accent/30"
     >
       <div class="flex items-center gap-3 min-w-0">
-        <div class="w-10 h-10 rounded-xl bg-brand-600/15 text-brand-600 grid place-items-center shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-accent/30 text-accent-ink grid place-items-center shrink-0">
           <Icon name="bell" :size="18" />
         </div>
         <div class="min-w-0">
@@ -65,8 +65,8 @@ onMounted(load)
     </div>
     <EmptyState v-else-if="!items.length" icon="bell" title="You're all caught up" />
     <div v-else class="pt-4 space-y-2">
-      <div v-for="n in items" :key="n.id" class="card p-4 flex gap-3" :class="n.read_at ? '' : 'ring-1 ring-brand-100'">
-        <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-700 grid place-items-center shrink-0"><Icon :name="ICON[n.kind] || 'bell'" :size="18" /></div>
+      <div v-for="n in items" :key="n.id" class="card p-4 flex gap-3" :class="n.read_at ? '' : 'ring-1 ring-accent'">
+        <div class="w-10 h-10 rounded-xl bg-accent-soft text-accent-ink grid place-items-center shrink-0"><Icon :name="ICON[n.kind] || 'bell'" :size="18" /></div>
         <div class="flex-1 min-w-0">
           <p class="font-semibold">{{ n.title }}</p>
           <p class="text-sm text-ink-soft" dir="auto">{{ n.body }}</p>
