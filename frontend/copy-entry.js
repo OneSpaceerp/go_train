@@ -1,10 +1,10 @@
 // Post-build step:
 // 1. Copy the compiled index.html into go_train/www/gotrain.html so Frappe serves
 //    the SPA at /gotrain (and /gotrain/* via website_route_rules).
-// 2. Normalize relative asset URLs inside go_train/public/frontend/sw.js to
-//    /assets/go_train/frontend/* so the Service Worker served from
-//    /api/method/go_train.api.pwa.sw (with Service-Worker-Allowed: /gotrain)
-//    resolves Workbox and precached chunks without 404s.
+// 2. Verify sw.js only uses absolute URLs. It is served from
+//    /api/method/go_train.api.pwa.sw, where relative URLs would 404; vite.config.js
+//    inlines the Workbox runtime and prefixes precache URLs; the web manifest
+//    entry is added by vite-plugin-pwa after that step, so it is prefixed here.
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,13 +20,15 @@ copyFileSync(src, dest)
 console.log('Copied', src, '->', dest)
 
 if (existsSync(swPath)) {
-  const BASE = '/assets/go_train/frontend/'
-  let sw = readFileSync(swPath, 'utf8')
-  sw = sw
-    .replace(/define\(\["\.\/workbox-/g, `define(["${BASE}workbox-`)
-    .replace(/url:"assets\//g, `url:"${BASE}assets/`)
-    .replace(/url:"manifest\.webmanifest"/g, `url:"${BASE}manifest.webmanifest"`)
-    .replace(/url:"sw-custom\.js"/g, `url:"${BASE}sw-custom.js"`)
+  const sw = readFileSync(swPath, 'utf8').replace(
+    /url:"manifest\.webmanifest"/g,
+    'url:"/assets/go_train/frontend/manifest.webmanifest"',
+  )
   writeFileSync(swPath, sw, 'utf8')
-  console.log('Normalized absolute asset paths in', swPath)
+  const relative = sw.match(/url:"(?!\/)[^"]+"|define\(\["\.\//)
+  if (relative) {
+    console.error('sw.js contains a relative URL that will 404 when served from /api/method:', relative[0])
+    process.exit(1)
+  }
+  console.log('Verified absolute URLs in', swPath)
 }

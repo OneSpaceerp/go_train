@@ -9,9 +9,15 @@ const route = useRoute()
 const messages = ref([])
 const text = ref('')
 const scroller = ref(null)
+const error = ref('')
 
 async function load() {
-  messages.value = await api.get(`/threads/${route.params.id}/messages`)
+  try {
+    messages.value = await api.get(`/threads/${route.params.id}/messages`)
+  } catch (err) {
+    error.value = err?.message || 'Could not load this conversation'
+    return
+  }
   await nextTick(); scroll()
 }
 function scroll() { scroller.value && (scroller.value.scrollTop = scroller.value.scrollHeight) }
@@ -19,7 +25,14 @@ onMounted(load)
 
 async function send() {
   if (!text.value.trim()) return
-  const m = await api.post(`/threads/${route.params.id}/messages`, { body: text.value })
+  error.value = ''
+  let m
+  try {
+    m = await api.post(`/threads/${route.params.id}/messages`, { body: text.value })
+  } catch (err) {
+    error.value = err?.message || 'Message not sent'
+    return
+  }
   messages.value.push(m); text.value = ''
   await nextTick(); scroll()
 }
@@ -35,6 +48,7 @@ async function send() {
         </div>
       </div>
     </div>
+    <p v-if="error" class="text-bad text-sm px-1" role="alert">{{ error }}</p>
     <div class="sticky bottom-0 bg-surface-page pt-2 pb-[env(safe-area-inset-bottom)]">
       <div class="flex gap-2">
         <input v-model="text" class="field" placeholder="Write your comment here …" dir="auto" @keyup.enter="send" />

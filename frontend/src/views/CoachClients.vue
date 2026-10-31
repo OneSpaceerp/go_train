@@ -11,17 +11,18 @@ import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
 
 const clients = ref(api.cached('/coach/clients') || [])
-const programs = ref(api.cached('/programs') || [])
+const programs = ref(api.cached('/coach/programs') || [])
 const loading = ref(!clients.value.length)
 const assigningClient = ref(null)
 const selectedProgram = ref('')
 const saving = ref(false)
+const error = ref('')
 
 async function load() {
   try {
     ;[clients.value, programs.value] = await Promise.all([
       api.get('/coach/clients'),
-      api.get('/programs'),
+      api.get('/coach/programs'),
     ])
     if (programs.value.length && !selectedProgram.value) {
       selectedProgram.value = programs.value[0].id
@@ -40,6 +41,7 @@ function openAssign(client) {
 async function assignProgram() {
   if (!assigningClient.value || !selectedProgram.value) return
   saving.value = true
+  error.value = ''
   haptics.medium()
   try {
     await api.post('/coach/assign', {
@@ -49,6 +51,9 @@ async function assignProgram() {
     haptics.success()
     assigningClient.value = null
     await load()
+  } catch (err) {
+    error.value = err?.message || 'Could not assign the program'
+    haptics.error()
   } finally {
     saving.value = false
   }
@@ -113,6 +118,7 @@ async function assignProgram() {
             </option>
           </select>
         </div>
+        <p v-if="error" class="text-bad text-sm" role="alert">{{ error }}</p>
         <button type="submit" class="btn-primary w-full" :disabled="saving">
           <Icon name="check" :size="18" />
           {{ saving ? 'Assigning…' : 'Confirm Assignment' }}

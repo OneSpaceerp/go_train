@@ -24,6 +24,7 @@ const letter = ref('A')
 const scheduledOn = ref(dayjs().format('YYYY-MM-DD'))
 const body = ref('')
 const saving = ref(false)
+const error = ref('')
 
 async function load() {
   workouts.value = await api.get(`/programs/${route.params.id}/workouts`)
@@ -39,6 +40,7 @@ onMounted(async () => {
 async function createWorkout() {
   if (!title.value.trim() || !body.value.trim()) return
   saving.value = true
+  error.value = ''
   haptics.medium()
   try {
     await api.post(`/programs/${route.params.id}/workouts`, {
@@ -52,6 +54,9 @@ async function createWorkout() {
     body.value = ''
     showAdd.value = false
     await load()
+  } catch (err) {
+    error.value = err?.message || 'Could not add the workout'
+    haptics.error()
   } finally {
     saving.value = false
   }
@@ -155,6 +160,7 @@ async function createWorkout() {
           ></textarea>
         </div>
 
+        <p v-if="error" class="text-bad text-sm" role="alert">{{ error }}</p>
         <button type="submit" class="btn-primary w-full" :disabled="saving">
           <Icon name="check" :size="18" />
           {{ saving ? 'Saving…' : 'Publish Workout' }}

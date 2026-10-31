@@ -33,3 +33,26 @@ website_route_rules = [
 # Seed gym roles and starter reference data on install & migrate
 after_install = "go_train.setup.install.after_install"
 after_migrate = "go_train.setup.install.after_install"
+
+# Row-level access: athletes only see their own records (see go_train/permissions.py)
+permission_query_conditions = {
+	"Member": "go_train.permissions.member_query",
+	"Workout Log": "go_train.permissions.workout_log_query",
+	"Progress Entry": "go_train.permissions.progress_entry_query",
+	"Class Booking": "go_train.permissions.class_booking_query",
+	"Check In": "go_train.permissions.check_in_query",
+	"Member Program": "go_train.permissions.member_program_query",
+	"Training Program": "go_train.permissions.training_program_query",
+	"Workout": "go_train.permissions.workout_query",
+}
+
+has_permission = {
+	"Member": "go_train.permissions.has_member_permission",
+	"Workout Log": "go_train.permissions.has_member_record_permission",
+	"Progress Entry": "go_train.permissions.has_member_record_permission",
+	"Class Booking": "go_train.permissions.has_member_record_permission",
+	"Check In": "go_train.permissions.has_member_record_permission",
+	"Member Program": "go_train.permissions.has_member_record_permission",
+	"Training Program": "go_train.permissions.has_training_program_permission",
+	"Workout": "go_train.permissions.has_workout_permission",
+}

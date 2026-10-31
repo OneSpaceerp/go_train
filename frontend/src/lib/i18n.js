@@ -24,6 +24,8 @@ const DICT = {
     // Offline & Install
     'pwa.offline': 'Offline mode · showing cached data',
     'pwa.queued': 'Saved offline · will sync when online',
+    'pwa.syncFailed': 'Some offline changes could not be saved',
+    'pwa.dismiss': 'Dismiss',
     'pwa.installTitle': 'Install Go Train App',
     'pwa.installSub': 'Add to your home screen for instant launch & offline workouts',
     'pwa.installBtn': 'Install',
@@ -140,6 +142,8 @@ const DICT = {
     // Offline & Install
     'pwa.offline': 'وضع عدم الاتصال · يتم عرض البيانات المحفوظة',
     'pwa.queued': 'تم الحفظ محلياً · ستتم المزامنة عند الاتصال',
+    'pwa.syncFailed': 'تعذّر حفظ بعض التغييرات التي تمت دون اتصال',
+    'pwa.dismiss': 'إخفاء',
     'pwa.installTitle': 'تثبيت تطبيق Go Train',
     'pwa.installSub': 'أضف التطبيق إلى الشاشة الرئيسية للوصول السريع والعمل بدون إنترنت',
     'pwa.installBtn': 'تثبيت',

@@ -37,7 +37,19 @@ bench --site <your-site> install-app go_train
 bench --site <your-site> migrate
 ```
 
-On install and migrate, Go Train automatically creates the gym roles (`Gym Manager`, `Coach`, `Front Desk`, `Member`) and seeds starter `Sport`, `Exercise`, and `Class Type` records.
+On install and migrate, Go Train automatically creates the gym roles (`Gym Manager`, `Coach`, `Front Desk`, `Member`) and seeds starter `Sport`, `Exercise`, and `Class Type` records. When ERPNext/HRMS provides the `Employee` DocType, an optional `Employee` link is added to `Coach`.
+
+### Access rules
+
+- **Athletes** (`Member` role) only see their own Member profile, workout logs, progress entries, bookings, check-ins and enrollments — in the PWA and through `/api/resource`. They see published programs plus the programs they're enrolled in.
+- **Coaches** need an active `Coach` record linked to their user. They manage only their own clients (`Member.coach`) and their own programs.
+- **Gym Managers** manage all members and programs.
+- Staff users never get a Member record created automatically. To train as an athlete too, link a Member to their user in Desk.
+
+### Paid programs & promos
+
+- Enrolling in a free program activates it immediately. A paid program creates a `Member Program` with **Payment Status = Pending** (inactive). Once payment is taken, set it to **Paid** and tick **Active**.
+- Member perks are managed as **Gym Promo** records (Go Train Setup → Gym Promos).
 
 ---
 
@@ -46,7 +58,19 @@ On install and migrate, Go Train automatically creates the gym roles (`Gym Manag
 ```bash
 npm run dev      # Vite dev server
 npm run build    # Builds into go_train/public/frontend/ and updates go_train/www/gotrain.html
+cd frontend && npm test   # Vitest unit tests (offline queue, API layer, search)
 ```
+
+Offline behaviour: the service worker caches the `/gotrain` app shell, so the installed app opens without a network. Workout logs, progress entries and check-ins made offline are queued with the device time, and are replayed with idempotency keys when the device is back online.
+
+## Tests
+
+```bash
+bench --site <your-site> set-config allow_tests true
+bench --site <your-site> run-tests --app go_train
+```
+
+CI (`.github/workflows/ci.yml`) runs ruff, the PWA tests and build, and the Frappe integration tests.
 
 ---
 

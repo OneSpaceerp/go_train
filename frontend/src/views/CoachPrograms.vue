@@ -8,16 +8,18 @@ import { api } from '../lib/api.js'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
 
-const programs = ref(api.cached('/programs') || [])
+const programs = ref(api.cached('/coach/programs') || [])
 const loading = ref(!programs.value.length)
 const creating = ref(false)
 const name = ref('')
 const description = ref('')
+const publish = ref(false)
 const saving = ref(false)
+const error = ref('')
 
 async function load() {
   try {
-    programs.value = await api.get('/programs')
+    programs.value = await api.get('/coach/programs')
   } finally {
     loading.value = false
   }
@@ -27,17 +29,23 @@ onMounted(load)
 async function create() {
   if (!name.value.trim()) return
   saving.value = true
+  error.value = ''
   haptics.medium()
   try {
     await api.post('/coach/programs', {
       name: name.value,
       description: description.value,
+      is_published: publish.value,
     })
     haptics.success()
     name.value = ''
     description.value = ''
+    publish.value = false
     creating.value = false
     await load()
+  } catch (err) {
+    error.value = err?.message || 'Could not create the program'
+    haptics.error()
   } finally {
     saving.value = false
   }
@@ -81,6 +89,7 @@ async function create() {
             {{ p.workout_count || 0 }} workouts · {{ p.client_count || 0 }} athlete{{
               p.client_count === 1 ? '' : 's'
             }}
+            <template v-if="!p.is_published"> · Draft</template>
           </p>
         </RouterLink>
       </div>
@@ -110,6 +119,11 @@ async function create() {
             placeholder="Overview, target level, weekly structure…"
           ></textarea>
         </div>
+        <label class="flex items-center gap-2.5 text-sm text-ink min-h-[44px]">
+          <input v-model="publish" type="checkbox" class="w-5 h-5 accent-brand-600" />
+          Publish to the Marketplace
+        </label>
+        <p v-if="error" class="text-bad text-sm" role="alert">{{ error }}</p>
         <button type="submit" class="btn-primary w-full" :disabled="saving">
           <Icon name="check" :size="18" />
           {{ saving ? 'Creating…' : 'Create Program' }}

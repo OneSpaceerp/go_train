@@ -6,4 +6,7 @@ from frappe.model.document import Document
 
 
 class MemberProgram(Document):
-	pass
+	def validate(self):
+		# A paid enrollment stays inactive until staff confirm the payment
+		if self.payment_status == "Pending":
+			self.is_active = 0

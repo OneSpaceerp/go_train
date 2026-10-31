@@ -9,7 +9,8 @@
   "member",
   "program",
   "start_date",
-  "is_active"
+  "is_active",
+  "payment_status"
  ],
  "fields": [
   {
@@ -41,12 +42,22 @@
    "label": "Active",
    "default": "1",
    "in_list_view": 1
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "Free\nPending\nPaid",
+   "default": "Free",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Paid marketplace enrollments start as Pending and stay inactive until marked Paid."
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 0,
  "links": [],
- "modified": "2026-10-24 00:00:00.000000",
+ "modified": "2026-10-31 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Member Program",

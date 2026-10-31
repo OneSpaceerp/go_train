@@ -6,6 +6,8 @@ import { haptics } from './haptics.js'
 
 const CACHE_PREFIX = 'gt-cache:v2:'
 const QUEUE_KEY = 'gt-offline-queue:v1'
+const FAILED_KEY = 'gt-offline-failed:v1'
+const MAX_ATTEMPTS = 5
 const INSTALL_DISMISSED_KEY = 'gt-install-dismissed'
 
 export const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
@@ -13,6 +15,9 @@ export const deferredInstallPrompt = ref(null)
 export const installDismissed = ref(Boolean(localStorage.getItem(INSTALL_DISMISSED_KEY)))
 export const unreadNotifications = ref(0)
 export const pendingSyncCount = ref(readQueue().length)
+// Queued changes the server rejected (or that kept failing); kept so the
+// athlete is told instead of the change vanishing.
+export const syncFailures = ref(readList(FAILED_KEY))
 export const swUpdateAvailable = ref(false)
 export const keyboardOpen = ref(false)
 
@@ -193,20 +198,22 @@ export async function purgeAllCachesOnLogout() {
     const keysToRemove = []
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
-      if (k && (k.startsWith(CACHE_PREFIX) || k === QUEUE_KEY)) {
+      if (k && (k.startsWith(CACHE_PREFIX) || k === QUEUE_KEY || k === FAILED_KEY)) {
         keysToRemove.push(k)
       }
     }
     keysToRemove.forEach((k) => localStorage.removeItem(k))
     pendingSyncCount.value = 0
+    syncFailures.value = []
   } catch {}
 
   try {
     if (typeof window !== 'undefined' && 'caches' in window) {
       const cacheNames = await window.caches.keys()
+      // gotrain-api-*, gotrain-media-* and gotrain-shell-* hold per-user data
       await Promise.all(
         cacheNames
-          .filter((name) => name.startsWith('gotrain-api'))
+          .filter((name) => name.startsWith('gotrain-'))
           .map((name) => window.caches.delete(name)),
       )
     }
@@ -216,12 +223,19 @@ export async function purgeAllCachesOnLogout() {
 }
 
 // --- Offline mutation queue with idempotency keys -------------------------
-function readQueue() {
+// Each queued body carries `client_op_id` and `client_time` (see api.js); the
+// server uses them to dedupe replays and to keep the original date.
+function readList(key) {
   try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]')
+    const list = JSON.parse(localStorage.getItem(key) || '[]')
+    return Array.isArray(list) ? list : []
   } catch {
     return []
   }
+}
+
+function readQueue() {
+  return readList(QUEUE_KEY)
 }
 
 function saveQueue(list) {
@@ -231,12 +245,20 @@ function saveQueue(list) {
   } catch {}
 }
 
+function saveFailures(list) {
+  syncFailures.value = list
+  try {
+    localStorage.setItem(FAILED_KEY, JSON.stringify(list))
+  } catch {}
+}
+
+export function dismissSyncFailures() {
+  saveFailures([])
+}
+
 export function enqueueOfflineMutation(item) {
   const q = readQueue()
-  const id =
-    typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const id = item.body?.client_op_id || `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   q.push({ id, ...item, attempts: 0, queuedAt: Date.now() })
   saveQueue(q)
   // Request Background Sync on Chromium if supported
@@ -247,27 +269,47 @@ export function enqueueOfflineMutation(item) {
   } catch {}
 }
 
-export async function flushOfflineQueue(runner) {
-  if (!isOnline.value) return
-  const q = readQueue()
-  if (!q.length) return
-  const remaining = []
-  for (let i = 0; i < q.length; i++) {
-    const item = q[i]
-    try {
-      await runner(item)
-    } catch {
-      item.attempts = (item.attempts || 0) + 1
-      if (item.attempts < 5) {
-        remaining.push(item, ...q.slice(i + 1))
+// Errors worth retrying later: offline, signed out (retry after sign-in),
+// timeouts, rate limits and server errors. Anything else (e.g. a validation
+// error) will never succeed, so it moves to the failures list.
+function isTransient(err) {
+  const status = err?.status || 0
+  return err?.network || !status || [401, 403, 408, 429].includes(status) || status >= 500
+}
+
+let flushing = null
+
+// Replays queued mutations in order. Concurrent calls share one run.
+export function flushOfflineQueue(runner) {
+  if (flushing) return flushing
+  flushing = (async () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+    const q = readQueue()
+    if (!q.length) return
+    const failures = readList(FAILED_KEY)
+    let remaining = []
+    for (let i = 0; i < q.length; i++) {
+      const item = q[i]
+      try {
+        await runner(item)
+      } catch (err) {
+        item.attempts = (item.attempts || 0) + 1
+        item.lastError = err?.message || 'Sync failed'
+        if (!isTransient(err) || item.attempts >= MAX_ATTEMPTS) {
+          failures.push(item)
+          continue // a permanent failure doesn't block the rest of the queue
+        }
+        remaining = q.slice(i) // preserve causal order: stop on a transient failure
+        break
       }
-      break // Preserve causal order: stop on first transient failure
     }
-  }
-  saveQueue(remaining)
-  if (remaining.length === 0) {
-    haptics.success()
-  }
+    saveQueue(remaining)
+    if (failures.length !== syncFailures.value.length) saveFailures(failures)
+    if (remaining.length === 0) haptics.success()
+  })().finally(() => {
+    flushing = null
+  })
+  return flushing
 }
 
 // --- Wire browser events once ---------------------------------------------

@@ -9,7 +9,6 @@
   "coach_name",
   "is_active",
   "user",
-  "employee",
   "sport",
   "phone",
   "col1",
@@ -35,12 +34,6 @@
    "label": "User",
    "options": "User",
    "in_list_view": 1
-  },
-  {
-   "fieldname": "employee",
-   "fieldtype": "Link",
-   "label": "Employee",
-   "options": "Employee"
   },
   {
    "fieldname": "sport",
@@ -69,7 +62,7 @@
  "index_web_pages_for_search": 1,
  "istable": 0,
  "links": [],
- "modified": "2026-10-24 00:00:00.000000",
+ "modified": "2026-10-31 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Coach",
@@ -160,6 +153,9 @@
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1,
- "autoname": "field:coach_name",
- "title_field": "coach_name"
+ "autoname": "COACH-.#####",
+ "title_field": "coach_name",
+ "naming_rule": "Expression (old style)",
+ "show_title_field_in_link": 1,
+ "search_fields": "coach_name"
 }

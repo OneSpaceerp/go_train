@@ -108,21 +108,19 @@ export default defineConfig({
             icons: [{ src: '/assets/go_train/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
         ],
-        share_target: {
-          action: '/gotrain',
-          method: 'GET',
-          params: {
-            title: 'title',
-            text: 'text',
-            url: 'url',
-          },
-        },
       },
       workbox: {
         skipWaiting: false,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Navigations to /gotrain are handled in sw-custom.js (network-first
+        // with a cached app shell for offline launch).
         navigateFallback: null,
+        // The worker is served from /api/method/go_train.api.pwa.sw, so relative
+        // URLs would resolve under /api/method/. Inline the Workbox runtime and
+        // make every precache URL absolute so the file can be served verbatim.
+        inlineWorkboxRuntime: true,
+        modifyURLPrefix: { '': '/assets/go_train/frontend/' },
         importScripts: ['/assets/go_train/frontend/sw-custom.js'],
         globPatterns: ['**/*.{js,css,ico,png,svg,webmanifest}'],
         runtimeCaching: [

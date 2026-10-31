@@ -7,7 +7,14 @@ import { useRouter } from 'vue-router'
 import AppHeader from './AppHeader.vue'
 import BottomNav from './BottomNav.vue'
 import Icon from './Icon.vue'
-import { isOnline, pendingSyncCount, swUpdateAvailable, applySwUpdate } from '../lib/pwa.js'
+import {
+  isOnline,
+  pendingSyncCount,
+  syncFailures,
+  dismissSyncFailures,
+  swUpdateAvailable,
+  applySwUpdate,
+} from '../lib/pwa.js'
 import { haptics } from '../lib/haptics.js'
 import { t, isRtl } from '../lib/i18n.js'
 
@@ -187,6 +194,22 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
           <Icon :name="!isOnline ? 'wifiOff' : 'refresh'" :size="15" />
           {{ !isOnline ? t('pwa.offline') : `${t('pwa.queued')} (${pendingSyncCount})` }}
         </span>
+      </div>
+    </div>
+
+    <!-- Offline changes the server rejected -->
+    <div v-if="syncFailures.length" class="mx-auto w-full max-w-[36rem] px-4 pt-2">
+      <div
+        class="flex items-start justify-between gap-3 px-3.5 py-2 rounded-xl text-xs font-medium border bg-bad/10 text-bad border-bad/25"
+        role="alert"
+      >
+        <span class="min-w-0">
+          {{ t('pwa.syncFailed') }} ({{ syncFailures.length }})
+          <span class="block text-ink-soft font-normal truncate">{{ syncFailures[syncFailures.length - 1].lastError }}</span>
+        </span>
+        <button type="button" class="shrink-0 font-bold underline" @click="dismissSyncFailures">
+          {{ t('pwa.dismiss') }}
+        </button>
       </div>
     </div>
 

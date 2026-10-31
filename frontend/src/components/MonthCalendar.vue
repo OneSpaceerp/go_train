@@ -6,12 +6,13 @@ import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
 
 // A month grid with a status dot under any day that has a scheduled workout.
-// `events` = [{ scheduled_on, status, ... }]. Emits `pick` with the ISO date.
+// `events` = [{ scheduled_on, status, ... }]. Emits `pick` with the ISO date
+// and `month` ('YYYY-MM') when the visible month changes, so the parent can load it.
 const props = defineProps({
   events: { type: Array, default: () => [] },
   modelValue: { type: String, default: '' },
 })
-const emit = defineEmits(['pick'])
+const emit = defineEmits(['pick', 'month'])
 
 const cursor = ref(dayjs().startOf('month'))
 const selected = ref(props.modelValue || dayjs().format('YYYY-MM-DD'))
@@ -48,6 +49,7 @@ function pick(d) {
 function jumpToday() {
   haptics.tap()
   cursor.value = dayjs().startOf('month')
+  emit('month', cursor.value.format('YYYY-MM'))
   selected.value = today
   emit('pick', today)
 }
@@ -55,6 +57,7 @@ function jumpToday() {
 const shift = (n) => {
   haptics.select()
   cursor.value = cursor.value.add(n, 'month')
+  emit('month', cursor.value.format('YYYY-MM'))
 }
 </script>
 

@@ -5,12 +5,15 @@ import EmptyState from '../components/EmptyState.vue'
 import { api } from '../lib/api.js'
 import { money } from '../lib/format.js'
 import { isCoach } from '../lib/session.js'
+import StatusPill from '../components/StatusPill.vue'
 
 const listings = ref([])
 const purchases = ref([])
 const sales = ref([])
 const tab = ref('browse')
 const loading = ref(true)
+const busyId = ref(null)
+const error = ref('')
 const coach = isCoach()
 
 onMounted(async () => {
@@ -19,13 +22,26 @@ onMounted(async () => {
     if (coach) reqs.push(api.get('/marketplace/sales'))
     const [l, p, s] = await Promise.all(reqs)
     listings.value = l; purchases.value = p; sales.value = s || []
+  } catch (err) {
+    error.value = err?.message || 'Could not load the marketplace'
   } finally { loading.value = false }
 })
 
-async function buy(id) {
-  await api.post(`/marketplace/${id}/buy`)
-  purchases.value = await api.get('/marketplace/purchases')
-  tab.value = 'purchases'
+// Free programs activate immediately; paid ones become a Pending request
+// that the gym activates once payment is taken.
+async function buy(listing) {
+  busyId.value = listing.id
+  error.value = ''
+  try {
+    const res = await api.post(`/marketplace/${listing.id}/buy`)
+    listing.my_status = res?.status || 'Active'
+    purchases.value = await api.get('/marketplace/purchases')
+    tab.value = 'purchases'
+  } catch (err) {
+    error.value = err?.message || 'Could not enroll'
+  } finally {
+    busyId.value = null
+  }
 }
 const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
 </script>
@@ -37,6 +53,7 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
         :class="tab === t ? 'border-brand-600 text-ink' : 'border-transparent text-ink-soft'" @click="tab = t">{{ t }}</button>
     </div>
 
+    <p v-if="error" class="text-bad text-sm mt-3 px-1" role="alert">{{ error }}</p>
     <div v-if="loading" class="card p-4 h-24 animate-pulse bg-surface-sunk mt-4"></div>
 
     <template v-else>
@@ -48,7 +65,13 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
             <span class="font-bold">{{ money(l.price_cents, l.currency) }}</span>
           </div>
           <p class="text-sm text-ink-soft mt-2">{{ l.summary }}</p>
-          <button class="btn-soft mt-3" @click="buy(l.id)">Buy program</button>
+          <StatusPill v-if="l.my_status === 'Active' || l.my_status === 'Pending'" :status="l.my_status" class="mt-3" />
+          <button v-else class="btn-soft mt-3" :disabled="busyId === l.id" @click="buy(l)">
+            {{ l.price_cents > 0 ? 'Request enrollment' : 'Enroll free' }}
+          </button>
+          <p v-if="l.price_cents > 0 && !l.my_status" class="text-xs text-ink-mute mt-2">
+            Your gym will confirm payment before the program unlocks.
+          </p>
         </div>
       </div>
 
@@ -56,7 +79,9 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
         <EmptyState v-if="!purchases.length" icon="store" title="No purchases yet" />
         <div v-else class="pt-4 space-y-2">
           <div v-for="p in purchases" :key="p.id" class="card p-4 flex justify-between items-center">
-            <p class="font-medium">{{ p.title }}</p><span class="text-sm text-ink-soft">{{ money(p.price_cents, p.currency) }}</span>
+            <div><p class="font-medium">{{ p.title }}</p>
+              <span class="text-sm text-ink-soft">{{ money(p.price_cents, p.currency) }}</span></div>
+            <StatusPill :status="p.status" />
           </div>
         </div>
       </div>

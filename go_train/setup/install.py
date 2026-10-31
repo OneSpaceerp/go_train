@@ -55,6 +55,26 @@ STARTER_CLASS_TYPES = (
 def after_install():
 	ensure_roles()
 	ensure_starter_catalog()
+	ensure_employee_link()
+
+
+def ensure_employee_link():
+	"""Link Coach to Employee only when ERPNext/HRMS provides the Employee DocType,
+	so Go Train installs cleanly on a Frappe-only site."""
+	if not frappe.db.exists("DocType", "Employee") or not frappe.db.exists("DocType", "Coach"):
+		return
+	from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+
+	create_custom_field(
+		"Coach",
+		{
+			"fieldname": "employee",
+			"fieldtype": "Link",
+			"label": "Employee",
+			"options": "Employee",
+			"insert_after": "user",
+		},
+	)
 
 
 def ensure_roles():
