@@ -21,7 +21,7 @@ export default defineConfig({
         start_url: '/gotrain?source=pwa',
         scope: '/gotrain',
         display: 'standalone',
-        display_override: ['window-controls-overlay', 'standalone', 'minimal-ui'],
+        display_override: ['window-controls-overlay', 'tabbed', 'standalone', 'minimal-ui'],
         orientation: 'portrait-primary',
         background_color: '#0B0C10',
         theme_color: '#FED14F',
@@ -29,6 +29,37 @@ export default defineConfig({
         dir: 'auto',
         categories: ['fitness', 'health', 'sports', 'lifestyle'],
         prefer_related_applications: false,
+        // The Play Store app (see README → Android app); the PWA stays preferred
+        related_applications: [
+          {
+            platform: 'play',
+            id: 'com.gotrain.app',
+            url: 'https://play.google.com/store/apps/details?id=com.gotrain.app',
+          },
+        ],
+        // OS entry points, handled in src/lib/launch.js and public/sw-custom.js
+        share_target: {
+          action: '/gotrain/share',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [{ name: 'media', accept: ['image/*', 'video/*'] }],
+          },
+        },
+        file_handlers: [
+          {
+            action: '/gotrain/open-file',
+            accept: {
+              'image/*': ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic'],
+              'video/*': ['.mp4', '.mov', '.m4v', '.webm'],
+            },
+            launch_type: 'single-client',
+          },
+        ],
+        protocol_handlers: [{ protocol: 'web+gotrain', url: '/gotrain/open?u=%s' }],
         launch_handler: {
           client_mode: ['navigate-existing', 'auto'],
         },

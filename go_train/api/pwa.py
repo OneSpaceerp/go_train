@@ -734,7 +734,7 @@ def _parse_set_logs(set_logs) -> list | None:
 	]
 
 
-def _claim_file(file_url: str, doctype: str, name: str, field: str):
+def _claim_file(file_url: str, doctype: str, name: str, field: str | None):
 	"""Only allow files the user uploaded, and attach them to the document so
 	everyone who can read it (the coach for a log, athletes for a workout) can
 	open the private file."""
@@ -1324,6 +1324,9 @@ def _last_member_comments(member_names: list[str]) -> dict:
 	return {r.reference_name: r for r in rows}
 
 
+MAX_MESSAGE_FILES = 5
+
+
 def _assert_thread_access(thread: str):
 	if not _can_access_member(thread):
 		frappe.throw(_("Not authorized to view this conversation"), frappe.PermissionError)
@@ -1406,12 +1409,20 @@ def get_thread_messages(thread: str):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_thread_message(thread: str, body: str):
-	"""Send a message in a Member<->Coach thread."""
-	body = (body or "").strip()
+def send_thread_message(thread: str, body: str = "", files=None):
+	"""Send a message in a Member<->Coach thread. `files` are URLs of photos or
+	videos the sender just uploaded (e.g. shared from another app); they are
+	attached to the thread's Member so both sides can open them, and listed on
+	their own lines after the text."""
+	_assert_thread_access(thread)
+	files = frappe.parse_json(files) if isinstance(files, str) else files or []
+	if not isinstance(files, list) or len(files) > MAX_MESSAGE_FILES:
+		frappe.throw(_("You can send up to {0} files at a time").format(MAX_MESSAGE_FILES))
+	for file_url in files:
+		_claim_file(file_url, "Member", thread, None)
+	body = "\n".join(part for part in [(body or "").strip(), *files] if part)
 	if not body:
 		frappe.throw(_("Message cannot be empty"))
-	_assert_thread_access(thread)
 
 	full_name = _display_name(get_member_for_user())
 	doc = frappe.get_doc(

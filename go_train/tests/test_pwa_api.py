@@ -160,6 +160,24 @@ class TestPwaApi(IntegrationTestCase):
 		msgs = pwa.get_thread_messages(thread=self.member)
 		self.assertEqual(msgs[-1]["body"], "Nice work <b>today</b>")
 
+	def test_message_files_are_attached_to_the_thread(self):
+		def upload(owner, name):
+			frappe.set_user(owner)
+			return frappe.get_doc(
+				{"doctype": "File", "file_name": name, "content": b"img", "is_private": 1}
+			).insert(ignore_permissions=True)
+
+		mine = upload(self.athlete, "gt-share.jpg")
+		theirs = upload(self.other, "gt-other.jpg")
+		frappe.set_user(self.athlete)
+		msg = pwa.send_thread_message(thread=self.member, body="", files=f'["{mine.file_url}"]')
+		self.assertEqual(msg["body"], mine.file_url)
+		attached = frappe.db.get_value("File", mine.name, ["attached_to_doctype", "attached_to_name"])
+		self.assertEqual(tuple(attached), ("Member", self.member))
+		self.assertRaises(
+			frappe.ValidationError, pwa.send_thread_message, thread=self.member, files=[theirs.file_url]
+		)
+
 	def test_unpublished_workout_is_hidden_from_members(self):
 		program = _program("GT Draft", coach=self.coach, published=0)
 		workout = _workout(program)
