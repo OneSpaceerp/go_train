@@ -148,6 +148,17 @@ export default defineConfig({
             },
           },
           {
+            // Google Fonts (Poppins / Cairo display faces) so titles render offline
+            urlPattern: ({ url }) =>
+              url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'gotrain-fonts-v1',
+              expiration: { maxEntries: 30, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // Uploaded workout photos/videos and static app images: CacheFirst
             urlPattern: ({ url }) =>
               url.pathname.startsWith('/files/') || url.pathname.startsWith('/assets/go_train/images/'),

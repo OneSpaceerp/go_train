@@ -5,6 +5,20 @@
 /* Semantic color tokens as RGB channels for Tailwind <alpha-value> support.
    Calibrated to WCAG 2.1 AA (>= 4.5:1 for normal text, >= 7:1 for primary body)
    and Apple HIG Light / Dark Mode base-vs-elevated hierarchy. */
+/* Motion & type tokens (pwa-native-app §3: system body, brand display face) */
+:root {
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.5, 1);
+  --ease-emph: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --dir-x: 1;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Noto Sans', Cairo, 'Noto Sans Arabic', sans-serif;
+  --font-display: Poppins, Cairo, system-ui, -apple-system, sans-serif;
+  --tabbar-space: 2.5rem;
+}
+[dir='rtl'] { --dir-x: -1; }
+:root:lang(ar) { --font-body: Cairo, system-ui, -apple-system, 'Noto Sans Arabic', sans-serif; --font-display: Cairo, Poppins, system-ui, sans-serif; }
+html.has-tabbar { --tabbar-space: 5.75rem; }
+
 :root {
   --ink: 12 16 36;        /* #0C1024 — 17.4:1 on #FFFFFF, 16.0:1 on #F4F6FA */
   --ink-soft: 58 68 88;   /* #3A4458 — 9.15:1 on #FFFFFF, 8.40:1 on #F4F6FA */
@@ -18,7 +32,7 @@
   --warn: 158 82 0;       /* #9E5200 — 5.38:1 on white */
   --bad: 196 30 50;       /* #C41E32 — 5.89:1 on white */
   --field: 158 168 186;
-  --glass-bg: rgba(255, 255, 255, 0.76);
+  --glass-bg: rgba(255, 255, 255, 0.86);
   --glass-border: rgba(255, 255, 255, 0.65);
 }
 
@@ -36,7 +50,7 @@
     --warn: 255 170 51;
     --bad: 255 110 122;
     --field: 66 74 90;
-    --glass-bg: rgba(22, 24, 31, 0.78);
+    --glass-bg: rgba(22, 24, 31, 0.88);
     --glass-border: rgba(255, 255, 255, 0.09);
   }
 }
@@ -54,7 +68,7 @@
   --warn: 255 170 51;
   --bad: 255 110 122;
   --field: 66 74 90;
-  --glass-bg: rgba(22, 24, 31, 0.78);
+  --glass-bg: rgba(22, 24, 31, 0.88);
   --glass-border: rgba(255, 255, 255, 0.09);
 }
 
@@ -73,7 +87,7 @@ body {
   height: auto;
   background-color: rgb(var(--page)) !important;
   color: rgb(var(--ink));
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Poppins, Cairo, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -167,6 +181,11 @@ button, a, [role="button"], input, select, textarea {
   color: #FF9CA1;
 }
 
+/* No blur support: glass would only be see-through, so make bars solid */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-bar, .glass-dock, .appbar--glass { background: rgb(var(--surface)) !important; }
+}
+
 /* Accessibility: Reduce Transparency & Increase Contrast fallbacks (liquid-glass.md) */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .glass-bar, .glass-dock {
@@ -181,78 +200,424 @@ button, a, [role="button"], input, select, textarea {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* Hide bottom tab dock smoothly when virtual keyboard opens (native-shell.md) */
-.keyboard-open .bottom-nav-dock {
-  transform: translateY(130%);
-  opacity: 0;
-  pointer-events: none;
-}
+/* ==========================================================================
+   App shell — navigation bar, tab bar / rail, screens, sheets, motion.
+   Motion follows Apple's CoreAnimation curve (--ease-ios) at 340ms for pushes;
+   only transform and opacity animate. Everything honours reduced motion.
+   ========================================================================== */
 
-/* Directional Page Transitions: iOS CoreAnimation curve cubic-bezier(0.32, 0.72, 0, 1) */
-.slide-forward-enter-active, .slide-forward-leave-active,
-.slide-back-enter-active, .slide-back-leave-active {
-  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.26s ease;
-}
+html.sheet-open { overflow: hidden; }
 
-/* Forward push: new screen slides in from right; old screen parallaxes 20% left */
-.slide-forward-enter-from { transform: translateX(28px); opacity: 0; }
-.slide-forward-leave-to { transform: translateX(-14px); opacity: 0; }
-[dir="rtl"] .slide-forward-enter-from { transform: translateX(-28px); }
-[dir="rtl"] .slide-forward-leave-to { transform: translateX(14px); }
-
-/* Backward pop: old screen slides out to right; returning screen parallaxes in from left */
-.slide-back-enter-from { transform: translateX(-18px); opacity: 0; }
-.slide-back-leave-to { transform: translateX(28px); opacity: 0; }
-[dir="rtl"] .slide-back-enter-from { transform: translateX(18px); }
-[dir="rtl"] .slide-back-leave-to { transform: translateX(-28px); }
-
-.fade-enter-active, .fade-leave-active { transition: opacity 0.16s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-
-/* View Transitions API native engine animations when supported */
-@keyframes gt-slide-out-left  { from { transform: translateX(0); } to { transform: translateX(-20%); opacity: 0.82; } }
-@keyframes gt-slide-in-right  { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes gt-slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
-@keyframes gt-slide-in-left   { from { transform: translateX(-20%); opacity: 0.82; } to { transform: translateX(0); } }
-
-[data-direction="forward"]::view-transition-old(root) {
-  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-out-left;
-}
-[data-direction="forward"]::view-transition-new(root) {
-  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-in-right;
-}
-[data-direction="backward"]::view-transition-old(root) {
-  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-out-right;
-  z-index: 2;
-}
-[data-direction="backward"]::view-transition-new(root) {
-  animation: 340ms cubic-bezier(0.32, 0.72, 0, 1) both gt-slide-in-left;
+/* Screens ----------------------------------------------------------------- */
+.screen {
+  position: relative;
   z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--page));
+  color: rgb(var(--ink));
+  /* Vertical scroll + pinch-zoom stay native; horizontal swipes are ours */
+  touch-action: pan-y pinch-zoom;
+}
+.screen--moving {
+  box-shadow: 0 0 40px rgba(10, 14, 28, 0.18);
+  will-change: transform;
+}
+.screen-main {
+  flex: 1;
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+  padding-inline: max(1rem, env(safe-area-inset-left));
+  padding-bottom: calc(var(--tabbar-space) + env(safe-area-inset-bottom));
+}
+.screen-banners {
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 0.5rem 1rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  text-align: start;
+}
+.banner--brand { width: 100%; background: #D92632; color: #fff; font-weight: 600; }
+.banner--warn { background: rgb(var(--warn) / 0.1); color: rgb(var(--warn)); border-color: rgb(var(--warn) / 0.25); }
+.banner--ok { background: rgb(var(--ok) / 0.1); color: rgb(var(--ok)); border-color: rgb(var(--ok) / 0.25); }
+.banner--bad { align-items: flex-start; background: rgb(var(--bad) / 0.1); color: rgb(var(--bad)); border-color: rgb(var(--bad) / 0.25); }
+.banner-action {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  background: rgb(255 255 255 / 0.2);
+}
+.banner--bad .banner-action { background: rgb(var(--bad) / 0.12); }
+
+/* Navigation bar ---------------------------------------------------------- */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 0.5px solid transparent;
+  transition: background-color 200ms ease, border-color 200ms ease;
+  view-transition-name: appbar;
+}
+.appbar--glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+}
+.appbar--edge { border-bottom-color: rgb(var(--line)); }
+.appbar-row {
+  display: grid;
+  /* Actions never overlap the title; a long title truncates instead */
+  grid-template-columns: minmax(44px, auto) minmax(0, 1fr) minmax(44px, auto);
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 52px;
+  max-width: 36rem;
+  margin-inline: auto;
+  padding-inline: max(0.375rem, env(safe-area-inset-left));
+}
+.appbar-side { display: flex; align-items: center; min-width: 0; }
+.appbar-side--end { justify-content: flex-end; gap: 0.125rem; }
+.appbar-title {
+  min-width: 0;
+  text-align: center;
+  cursor: default;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 180ms ease, transform 220ms var(--ease-ios);
+}
+.appbar-title.is-visible { opacity: 1; transform: none; }
+.appbar-title-text {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  outline: none;
+}
+.appbar-subtitle {
+  font-size: 0.75rem;
+  color: rgb(var(--ink-mute));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appbar-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 44px;
+  min-width: 44px;
+  max-width: 100%;
+  padding-inline: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: #D92632;
+  font-size: 1.0625rem;
+  transition: opacity 120ms ease;
+}
+.appbar-back:active { opacity: 0.45; }
+.appbar-back-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-inline-start: -0.2rem; }
+/* Android: start-aligned title and a plain arrow */
+[data-os='android'] .appbar-title { text-align: start; padding-inline-start: 0.25rem; }
+
+/* iOS-style large title on tab roots */
+.large-title {
+  width: 100%;
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 0.25rem max(1rem, env(safe-area-inset-left)) 0.5rem;
+}
+.large-title-text {
+  font-family: var(--font-display);
+  font-size: 2.125rem;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  outline: none;
+}
+.large-title-subtitle { margin-top: 0.125rem; font-size: 0.9375rem; color: rgb(var(--ink-soft)); }
+
+/* Pull to refresh --------------------------------------------------------- */
+.ptr {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  transition: height 300ms var(--ease-ios);
+}
+.ptr-spinner {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  box-shadow: 0 6px 20px -8px rgba(20, 24, 40, 0.25);
+  color: rgb(var(--ink-mute));
+  transition: color 150ms ease;
+}
+.ptr-spinner.is-armed { color: #D92632; }
+
+/* Tab bar: floating Liquid Glass capsule ---------------------------------- */
+.tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 0 max(0.75rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-bottom));
+  pointer-events: none;
+  view-transition-name: tabbar;
+  transition: transform 260ms var(--ease-ios), opacity 200ms ease;
+}
+.tabbar-capsule {
+  pointer-events: auto;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--tabs), minmax(0, 1fr));
+  max-width: 30rem;
+  margin-inline: auto;
+  padding: 4px;
+  border-radius: 999px;
+  border: 0.5px solid var(--glass-border);
+}
+.tabbar-lens {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  inset-inline-start: 4px;
+  width: calc((100% - 8px) / var(--tabs));
+  border-radius: 999px;
+  background: rgb(242 61 70 / 0.11);
+  transform: translateX(calc(var(--active) * 100% * var(--dir-x)));
+  transition: transform 460ms var(--ease-spring);
+}
+.tabbar-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 54px;
+  padding: 0.25rem 0.125rem;
+  border-radius: 999px;
+  color: rgb(var(--ink-soft));
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: color 160ms ease, transform 140ms var(--ease-ios);
+}
+.tabbar-item:active { transform: scale(0.92); }
+.tabbar-item.is-active { color: #D92632; }
+.tabbar-label {
+  max-width: 100%;
+  font-size: 0.65625rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tabbar-badge {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(var(--bad));
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgb(var(--surface));
+}
+.tabbar-icon-pop { animation: tabbar-pop 420ms var(--ease-spring); }
+@keyframes tabbar-pop {
+  0% { transform: scale(0.82); }
+  55% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.keyboard-open .tabbar { transform: translateY(130%); opacity: 0; pointer-events: none; }
+.sheet-open .tabbar { pointer-events: none; }
+
+/* Navigation rail at tablet / desktop widths (≥ 840px) */
+@media (min-width: 840px) {
+  html.has-tabbar { --tabbar-space: 2.5rem; }
+  html.has-tabbar body { padding-inline-start: 96px; }
+  .tabbar {
+    inset: 0 auto 0 0;
+    width: 96px;
+    padding: max(1rem, env(safe-area-inset-top)) 0.75rem 1rem max(0.75rem, env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+  }
+  [dir='rtl'] .tabbar { inset: 0 0 0 auto; }
+  .tabbar-capsule {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-radius: 28px;
+  }
+  .tabbar-lens {
+    top: 4px;
+    bottom: auto;
+    inset-inline: 4px;
+    width: auto;
+    height: 64px;
+    border-radius: 24px;
+    transform: translateY(calc(var(--active) * 64px));
+  }
+  .tabbar-item { min-height: 64px; border-radius: 24px; }
 }
 
-/* Sheet modal transition */
-.sheet-enter-active, .sheet-leave-active {
-  transition: opacity 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+/* Bottom sheet ------------------------------------------------------------ */
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
-.sheet-enter-active .sheet-panel, .sheet-leave-active .sheet-panel {
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.45);
 }
-.sheet-enter-from, .sheet-leave-to { opacity: 0; }
-.sheet-enter-from .sheet-panel, .sheet-leave-to .sheet-panel {
-  transform: translateY(100%);
+.sheet-panel {
+  position: relative;
+  width: 100%;
+  max-width: 36rem;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  outline: none;
+  background: rgb(var(--elevated));
+  border-radius: 2rem 2rem 0 0;
+  border-top: 0.5px solid rgb(var(--line));
+  box-shadow: 0 -12px 40px -12px rgba(10, 14, 28, 0.3);
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px));
+  transition: transform 380ms var(--ease-ios);
 }
+.sheet-header {
+  padding: 0.5rem 1rem 0.5rem;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+.sheet-grabber {
+  width: 36px;
+  height: 5px;
+  margin: 0 auto 0.5rem;
+  border-radius: 999px;
+  background: rgb(var(--ink-mute) / 0.35);
+}
+.sheet-cancel {
+  min-height: 44px;
+  padding-inline: 0.5rem;
+  font-size: 1.0625rem;
+  color: #D92632;
+}
+.sheet-cancel:active { opacity: 0.45; }
+.sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.75rem 1.25rem 0.5rem;
+}
+.sheet-enter-active .sheet-backdrop,
+.sheet-leave-active .sheet-backdrop { transition: opacity 320ms ease; }
+.sheet-enter-active .sheet-panel { transition: transform 420ms var(--ease-ios); }
+.sheet-leave-active .sheet-panel { transition: transform 260ms var(--ease-ios); }
+.sheet-enter-from .sheet-backdrop, .sheet-leave-to .sheet-backdrop { opacity: 0 !important; }
+.sheet-enter-from .sheet-panel, .sheet-leave-to .sheet-panel { transform: translate3d(0, 100%, 0) !important; }
+
+/* Press feedback & focus --------------------------------------------------- */
+.pressable { transition: transform 120ms var(--ease-ios); }
+.pressable:active { transform: scale(0.97); }
+:focus-visible { outline: 2.5px solid #F23D46; outline-offset: 2px; }
+[data-screen-title]:focus-visible { outline-offset: 4px; border-radius: 6px; }
+
+/* Screen transitions (View Transitions API, driven by router.js) ------------
+   html[data-nav] holds the navigation direction while a transition runs.
+   The tab bar keeps its own name, so it never moves; the navigation bar
+   crossfades while content slides, as on iOS. */
+::view-transition-group(root),
+::view-transition-group(appbar) { animation-duration: 340ms; animation-timing-function: var(--ease-ios); }
+::view-transition-group(tabbar) { animation: none; }
+::view-transition-old(tabbar), ::view-transition-new(tabbar) { animation: none; }
+
+@keyframes vt-from-end    { from { transform: translateX(calc(100% * var(--dir-x))); } }
+@keyframes vt-to-start    { to { transform: translateX(calc(-28% * var(--dir-x))); filter: brightness(0.92); } }
+@keyframes vt-from-start  { from { transform: translateX(calc(-28% * var(--dir-x))); filter: brightness(0.92); } }
+@keyframes vt-to-end      { to { transform: translateX(calc(100% * var(--dir-x))); } }
+@keyframes vt-fade-in     { from { opacity: 0; } }
+@keyframes vt-fade-out    { to { opacity: 0; } }
+@keyframes vt-from-right  { from { transform: translateX(100%); } }
+@keyframes vt-from-left   { from { transform: translateX(-100%); } }
+@keyframes vt-to-left     { to { transform: translateX(-100%); } }
+@keyframes vt-to-right    { to { transform: translateX(100%); } }
+
+/* Push: the new screen slides in over the old one, which parallaxes back */
+html[data-nav='forward']::view-transition-old(root) { animation: 340ms var(--ease-ios) both vt-to-start; }
+html[data-nav='forward']::view-transition-new(root) { animation: 340ms var(--ease-ios) both vt-from-end; }
+
+/* Pop: the old screen slides off over the returning one */
+html[data-nav='backward']::view-transition-old(root) { animation: 340ms var(--ease-ios) both vt-to-end; z-index: 2; }
+html[data-nav='backward']::view-transition-new(root) { animation: 340ms var(--ease-ios) both vt-from-start; z-index: 1; }
+
+/* Finished an interactive back swipe: just settle the revealed screen */
+html[data-nav='swipe-back']::view-transition-old(root) { animation: 160ms ease both vt-fade-out; z-index: 2; }
+html[data-nav='swipe-back']::view-transition-new(root) { animation: 300ms var(--ease-ios) both vt-from-start; z-index: 1; }
+
+/* Tab switch by tap: a quick fade-through (iOS switches tabs without sliding) */
+html[data-nav='tab']::view-transition-old(root) { animation: 110ms ease-out both vt-fade-out; }
+html[data-nav='tab']::view-transition-new(root) { animation: 190ms 40ms ease-out both vt-fade-in; }
+html[data-nav='tab']::view-transition-group(appbar) { animation-duration: 0s; }
+html[data-nav='tab']::view-transition-old(appbar) { animation: 110ms ease-out both vt-fade-out; }
+html[data-nav='tab']::view-transition-new(appbar) { animation: 190ms 40ms ease-out both vt-fade-in; }
+
+/* Tab switch by swipe: pager movement in the finger's direction */
+html[data-nav='swipe-left']::view-transition-old(root) { animation: 300ms var(--ease-ios) both vt-to-left; }
+html[data-nav='swipe-left']::view-transition-new(root) { animation: 300ms var(--ease-ios) both vt-from-right; }
+html[data-nav='swipe-right']::view-transition-old(root) { animation: 300ms var(--ease-ios) both vt-to-right; }
+html[data-nav='swipe-right']::view-transition-new(root) { animation: 300ms var(--ease-ios) both vt-from-left; }
+html[data-nav^='swipe']::view-transition-group(appbar) { animation-duration: 0s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .slide-forward-enter-from, .slide-forward-leave-to,
-  .slide-back-enter-from, .slide-back-leave-to,
-  .sheet-enter-from .sheet-panel, .sheet-leave-to .sheet-panel {
-    transform: none !important;
-  }
+  .tabbar-lens, .tabbar-item, .appbar-title, .ptr, .sheet-panel { transition: none !important; }
+  .tabbar-icon-pop { animation: none; }
+  .sheet-enter-from .sheet-panel, .sheet-leave-to .sheet-panel { transform: none !important; }
   ::view-transition-group(*),
   ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 1ms !important;
-  }
+  ::view-transition-new(*) { animation-duration: 1ms !important; }
 }
 
 mark { background: #FFE38A; color: inherit; border-radius: 3px; padding: 0 2px; }
@@ -260,4 +625,16 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
 :root[data-theme='dark'] mark { background: #8a6d00; color: #fff; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) mark { background: #8a6d00; color: #fff; }
+}
+
+/* In-screen pages (segmented control content) slide toward the chosen side */
+.seg-next-enter-active, .seg-next-leave-active,
+.seg-prev-enter-active, .seg-prev-leave-active { transition: transform 240ms var(--ease-ios), opacity 180ms ease; }
+.seg-next-enter-from { transform: translateX(calc(24px * var(--dir-x))); opacity: 0; }
+.seg-next-leave-to { transform: translateX(calc(-24px * var(--dir-x))); opacity: 0; }
+.seg-prev-enter-from { transform: translateX(calc(-24px * var(--dir-x))); opacity: 0; }
+.seg-prev-leave-to { transform: translateX(calc(24px * var(--dir-x))); opacity: 0; }
+.seg-pages { min-height: 50dvh; }
+@media (prefers-reduced-motion: reduce) {
+  .seg-next-enter-from, .seg-next-leave-to, .seg-prev-enter-from, .seg-prev-leave-to { transform: none; }
 }

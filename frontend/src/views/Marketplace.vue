@@ -1,11 +1,15 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Scaffold from '../components/Scaffold.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { api } from '../lib/api.js'
 import { money } from '../lib/format.js'
 import { isCoach } from '../lib/session.js'
 import StatusPill from '../components/StatusPill.vue'
+import SegmentedControl from '../components/SegmentedControl.vue'
+import { swipeHandlers } from '../lib/gestures.js'
+import { haptics } from '../lib/haptics.js'
+import { isRtl } from '../lib/i18n.js'
 
 const listings = ref([])
 const purchases = ref([])
@@ -44,20 +48,35 @@ async function buy(listing) {
   }
 }
 const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
+const LABELS = { browse: 'Browse', purchases: 'Purchases', sales: 'Sales' }
+const segments = computed(() => tabs.map((value) => ({ value, label: LABELS[value] })))
+
+// Segment pages slide in from the side you swiped (or the segment you tapped)
+const pageMotion = ref('seg-next')
+function setTab(next) {
+  pageMotion.value = tabs.indexOf(next) > tabs.indexOf(tab.value) ? 'seg-next' : 'seg-prev'
+  tab.value = next
+}
+const swipe = swipeHandlers((dir) => {
+  const forward = (dir === 'left') !== isRtl.value
+  const next = tabs[tabs.indexOf(tab.value) + (forward ? 1 : -1)]
+  if (next) {
+    haptics.select()
+    setTab(next)
+  }
+})
 </script>
 
 <template>
   <Scaffold title="Marketplace" back>
-    <div class="flex gap-5 border-b border-line mt-2 px-1">
-      <button v-for="t in tabs" :key="t" class="py-3 text-sm font-medium capitalize border-b-2 -mb-px transition"
-        :class="tab === t ? 'border-brand-600 text-ink' : 'border-transparent text-ink-soft'" @click="tab = t">{{ t }}</button>
-    </div>
+    <SegmentedControl :model-value="tab" :options="segments" label="Marketplace sections" class="mt-3" @update:model-value="setTab" />
 
     <p v-if="error" class="text-bad text-sm mt-3 px-1" role="alert">{{ error }}</p>
     <div v-if="loading" class="card p-4 h-24 animate-pulse bg-surface-sunk mt-4"></div>
 
-    <template v-else>
-      <div v-if="tab === 'browse'" class="pt-4 space-y-3">
+    <div v-else class="seg-pages" @touchstart.passive="swipe.onTouchstart" @touchmove="swipe.onTouchmove" @touchend.passive="swipe.onTouchend">
+     <Transition :name="pageMotion" mode="out-in">
+      <div v-if="tab === 'browse'" key="browse" class="pt-4 space-y-3">
         <div v-for="l in listings" :key="l.id" class="card p-4">
           <div class="flex items-start justify-between gap-3">
             <div><p class="font-semibold">{{ l.title }}</p>
@@ -75,7 +94,7 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
         </div>
       </div>
 
-      <div v-else-if="tab === 'purchases'">
+      <div v-else-if="tab === 'purchases'" key="purchases">
         <EmptyState v-if="!purchases.length" icon="store" title="No purchases yet" />
         <div v-else class="pt-4 space-y-2">
           <div v-for="p in purchases" :key="p.id" class="card p-4 flex justify-between items-center">
@@ -86,7 +105,7 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
         </div>
       </div>
 
-      <div v-else>
+      <div v-else key="sales">
         <EmptyState v-if="!sales.length" icon="store" title="No sales yet" />
         <div v-else class="pt-4 space-y-2">
           <div v-for="s in sales" :key="s.id" class="card p-4 flex justify-between items-center">
@@ -95,6 +114,7 @@ const tabs = coach ? ['browse', 'purchases', 'sales'] : ['browse', 'purchases']
           </div>
         </div>
       </div>
-    </template>
+     </Transition>
+    </div>
   </Scaffold>
 </template>

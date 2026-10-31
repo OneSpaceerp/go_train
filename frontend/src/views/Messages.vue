@@ -3,14 +3,17 @@ import { ref, onMounted } from 'vue'
 import Scaffold from '../components/Scaffold.vue'
 import Avatar from '../components/Avatar.vue'
 import EmptyState from '../components/EmptyState.vue'
+import { onScreenReturn } from '../lib/useScreen.js'
 import { api } from '../lib/api.js'
 import { fromNow } from '../lib/format.js'
 
 const threads = ref([])
 const loading = ref(true)
-onMounted(async () => {
+async function load() {
   try { threads.value = await api.get('/threads') } finally { loading.value = false }
-})
+}
+onMounted(load)
+onScreenReturn(load)
 </script>
 
 <template>

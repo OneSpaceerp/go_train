@@ -4,6 +4,7 @@ import Scaffold from '../components/Scaffold.vue'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import { onScreenReturn } from '../lib/useScreen.js'
 import { api } from '../lib/api.js'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
@@ -25,6 +26,7 @@ async function load() {
   }
 }
 onMounted(load)
+onScreenReturn(load)
 
 async function create() {
   if (!name.value.trim()) return

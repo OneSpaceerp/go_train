@@ -1,11 +1,18 @@
 <script setup>
-// Native app shell wrapper: scroll-aware Liquid Glass header, pull-to-refresh,
-// iOS edge-swipe back gesture on detail views, offline status bar, and safe-area
-// bottom navigation room.
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+// Native screen shell: navigation bar (large title on tab roots), status
+// banners, pull-to-refresh, and the screen-level gestures:
+//   • edge-swipe back on pushed screens — the screen follows the finger and
+//     commits on distance or a flick, like a UINavigationController pop
+//   • swipe between tabs on tab roots — a supplementary shortcut to the tab
+//     bar; it never starts at the screen edges, in horizontal scrollers or in
+//     form fields
+// `touch-action: pan-y pinch-zoom` keeps vertical scrolling and pinch-zoom on
+// the compositor while horizontal swipes are handled here. Once a swipe locks
+// to the horizontal axis (before the browser's scroll slop), its touchmoves
+// are cancelled so the page can't drift or fling vertically underneath it.
+import { ref, computed, watch, onMounted, onUnmounted, onDeactivated } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppHeader from './AppHeader.vue'
-import BottomNav from './BottomNav.vue'
 import Icon from './Icon.vue'
 import {
   isOnline,
@@ -17,228 +24,291 @@ import {
 } from '../lib/pwa.js'
 import { haptics } from '../lib/haptics.js'
 import { t, isRtl } from '../lib/i18n.js'
+import { registerTitle, adjacentTab, goTab, setNextNavigation, tabByName, currentTab } from '../lib/nav.js'
+import { velocityTracker, horizontalGestureClaimed, rubberBand } from '../lib/gestures.js'
 
 const props = defineProps({
   title: String,
   subtitle: String,
   back: Boolean,
+  // Tab root: large title + swipe between tabs
   tab: Boolean,
   onRefresh: Function,
 })
 
+const route = useRoute()
 const router = useRouter()
+const root = ref(null)
 const scrolled = ref(false)
-const pullDistance = ref(0)
-const refreshing = ref(false)
-const edgeSwipeDx = ref(0)
-const isEdgeSwiping = ref(false)
 
-let touchStartY = 0
-let touchStartX = 0
-let pulling = false
-let edgeSwipe = false
-let pullThresholdCrossed = false
+// --- title bookkeeping (back-button labels, window title) -------------------
+watch(
+  () => props.title,
+  (title) => {
+    registerTitle(route.fullPath, title)
+    if (title && typeof document !== 'undefined') document.title = `${title} · Go Train`
+  },
+  { immediate: true },
+)
 
 function onScroll() {
-  scrolled.value = window.scrollY > 6
+  scrolled.value = window.scrollY > 4
+}
+onMounted(() => {
+  window.addEventListener('scroll', onScroll, { passive: true })
+  // Non-passive so an owned horizontal swipe can stop vertical scrolling
+  root.value?.addEventListener('touchmove', onTouchMove, { passive: false })
+  onScroll()
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  root.value?.removeEventListener('touchmove', onTouchMove)
+})
+
+// --- gesture state ----------------------------------------------------------
+const EDGE = 24 // px from the leading edge that starts a back swipe
+const offsetX = ref(0) // horizontal displacement of the screen
+const animating = ref(false) // spring-back / commit in progress
+const mode = ref(null) // 'back' | 'pager' | 'pull' | null
+const pullDistance = ref(0)
+const refreshing = ref(false)
+const PULL_TRIGGER = 64
+
+const tracker = velocityTracker()
+let start = null // { x, y, target }
+let axis = null // 'x' | 'y' | null
+let pullArmed = false
+
+const width = () => window.innerWidth || 375
+// +1 when the finger moves toward the trailing edge (right in LTR, left in RTL)
+const lead = () => (isRtl.value ? -1 : 1)
+
+function resetGesture() {
+  start = null
+  axis = null
+  mode.value = null
 }
 
 function onTouchStart(e) {
-  if (!e.touches || e.touches.length !== 1) return
+  if (e.touches.length !== 1 || animating.value || refreshing.value) return resetGesture()
   const touch = e.touches[0]
-  touchStartY = touch.clientY
-  touchStartX = touch.clientX
-  pulling = window.scrollY <= 0
-  pullThresholdCrossed = false
-  // Interactive finger-tracking edge swipe back from leading 26px margin on detail views
-  const fromLeadingEdge = isRtl.value
-    ? window.innerWidth - touch.clientX < 28
-    : touch.clientX < 28
-  edgeSwipe = Boolean(props.back && fromLeadingEdge)
-  isEdgeSwiping.value = false
-  edgeSwipeDx.value = 0
+  start = { x: touch.clientX, y: touch.clientY, target: e.target }
+  axis = null
+  pullArmed = false
+  tracker.reset()
+  tracker.add(touch.clientX, touch.clientY)
 }
 
 function onTouchMove(e) {
-  if (!e.touches || e.touches.length !== 1) return
-  const dy = e.touches[0].clientY - touchStartY
-  const dx = e.touches[0].clientX - touchStartX
+  if (!start || e.touches.length !== 1) return
+  if ((mode.value === 'back' || mode.value === 'pager') && e.cancelable) e.preventDefault()
+  const touch = e.touches[0]
+  tracker.add(touch.clientX, touch.clientY)
+  const dx = touch.clientX - start.x
+  const dy = touch.clientY - start.y
 
-  if (edgeSwipe) {
-    const directionalDx = isRtl.value ? -dx : dx
-    if (directionalDx > 6 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-      isEdgeSwiping.value = true
-      edgeSwipeDx.value = isRtl.value
-        ? -Math.min(window.innerWidth * 0.75, directionalDx)
-        : Math.min(window.innerWidth * 0.75, directionalDx)
-      pullDistance.value = 0
-      return
+  if (!axis) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+    axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y'
+    const fromLeadingEdge = isRtl.value ? width() - start.x <= EDGE : start.x <= EDGE
+    const fromAnyEdge = start.x <= EDGE || width() - start.x <= EDGE
+
+    if (axis === 'x' && props.back && fromLeadingEdge && dx * lead() > 0) {
+      mode.value = 'back'
+      if (e.cancelable) e.preventDefault()
+    } else if (axis === 'x' && props.tab && !fromAnyEdge && !horizontalGestureClaimed(start.target, root.value)) {
+      mode.value = 'pager'
+      if (e.cancelable) e.preventDefault()
+    } else if (axis === 'y' && props.onRefresh && dy > 0 && window.scrollY <= 0) {
+      mode.value = 'pull'
+    } else {
+      mode.value = null
     }
   }
 
-  if (pulling && dy > 0 && Math.abs(dy) > Math.abs(dx) * 1.4 && window.scrollY <= 0) {
-    const nextPull = Math.min(84, dy * 0.42)
-    if (nextPull >= 56 && !pullThresholdCrossed) {
-      pullThresholdCrossed = true
+  if (mode.value === 'back') {
+    offsetX.value = lead() * Math.max(0, Math.min(width(), dx * lead()))
+  } else if (mode.value === 'pager') {
+    // Rubber-band when there is no tab in that direction
+    const target = pagerTarget(dx)
+    offsetX.value = target ? dx : rubberBand(dx, width(), 0.35)
+  } else if (mode.value === 'pull') {
+    if (window.scrollY > 0) return
+    const next = Math.min(110, rubberBand(Math.max(0, dy), 320, 0.55))
+    if (next >= PULL_TRIGGER && !pullArmed) {
+      pullArmed = true
       haptics.select()
-    } else if (nextPull < 56 && pullThresholdCrossed) {
-      pullThresholdCrossed = false
+    } else if (next < PULL_TRIGGER) {
+      pullArmed = false
     }
-    pullDistance.value = nextPull
-  } else if (dy < 0) {
-    pullDistance.value = 0
+    pullDistance.value = next
   }
 }
 
-async function onTouchEnd(e) {
-  if (edgeSwipe && e.changedTouches?.length) {
-    const dx = e.changedTouches[0].clientX - touchStartX
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY)
-    const triggered = isRtl.value ? dx < -76 : dx > 76
-    isEdgeSwiping.value = false
-    edgeSwipeDx.value = 0
-    if (triggered && dy < 60) {
+// The tab a horizontal swipe would reveal: swiping toward the leading edge
+// shows the next tab in reading order.
+function pagerTarget(dx) {
+  const step = dx * lead() < 0 ? 1 : -1
+  return adjacentTab(step)
+}
+
+function settle(to, then) {
+  animating.value = true
+  offsetX.value = to
+  setTimeout(() => {
+    animating.value = false
+    then?.()
+  }, 260)
+}
+
+function onTouchEnd() {
+  if (!start) return
+  const { x: vx } = tracker.velocity()
+  const w = width()
+  const current = mode.value
+
+  if (current === 'back') {
+    const progress = (offsetX.value * lead()) / w
+    const flick = vx * lead() > 0.45
+    if ((progress > 0.33 || flick) && progress > 0.06) {
       haptics.tap()
-      if (window.history.length > 1) router.back()
-      else router.replace('/')
-      pullDistance.value = 0
-      edgeSwipe = false
-      return
+      settle(lead() * w, popScreen)
+    } else {
+      settle(0)
     }
-  }
-  isEdgeSwiping.value = false
-  edgeSwipeDx.value = 0
-  edgeSwipe = false
-
-  if (pullDistance.value >= 56 && !refreshing.value) {
-    refreshing.value = true
-    pullDistance.value = 48
-    haptics.medium()
-    try {
-      if (typeof props.onRefresh === 'function') {
-        await props.onRefresh()
-      } else {
-        window.dispatchEvent(new CustomEvent('gotrain:refresh'))
-        await new Promise((r) => setTimeout(r, 420))
-      }
-    } finally {
-      refreshing.value = false
-      pullDistance.value = 0
+  } else if (current === 'pager') {
+    const dx = offsetX.value
+    const target = pagerTarget(dx)
+    const flick = Math.abs(vx) > 0.4 && Math.sign(vx) === Math.sign(dx)
+    if (target && (Math.abs(dx) > w * 0.28 || flick)) {
+      haptics.select()
+      // The outgoing screen keeps its offset; the transition carries it off
+      goTab(router, target.tab, { direction: dx < 0 ? 'swipe-left' : 'swipe-right' })
+    } else {
+      settle(0)
     }
-  } else {
-    pullDistance.value = 0
+  } else if (current === 'pull') {
+    finishPull()
   }
-  pulling = false
+  resetGesture()
 }
 
-onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+function popScreen() {
+  setNextNavigation({ direction: 'swipe-back' })
+  if (window.history.state?.back) router.back()
+  else router.replace(tabByName(currentTab.value)?.root || '/')
+}
+
+async function finishPull() {
+  if (pullDistance.value < PULL_TRIGGER || refreshing.value) {
+    pullDistance.value = 0
+    return
+  }
+  refreshing.value = true
+  pullDistance.value = 52
+  haptics.medium()
+  try {
+    if (typeof props.onRefresh === 'function') await props.onRefresh()
+  } catch {
+    haptics.error()
+  } finally {
+    refreshing.value = false
+    pullDistance.value = 0
+  }
+}
+
+// A screen kept alive in a tab must come back unshifted
+onDeactivated(() => {
+  offsetX.value = 0
+  animating.value = false
+  pullDistance.value = 0
+  resetGesture()
+})
+
+const screenStyle = computed(() => {
+  if (!offsetX.value && !animating.value) return undefined
+  const tracking = mode.value && !animating.value
+  return {
+    transform: `translate3d(${offsetX.value}px, 0, 0)`,
+    transition: tracking ? 'none' : 'transform 260ms var(--ease-ios)',
+  }
+})
+
+// Dim the area the screen uncovers during a back swipe
+const underlayOpacity = computed(() =>
+  mode.value === 'back' || (animating.value && props.back) ? 0.12 * (1 - Math.abs(offsetX.value) / width()) : 0,
+)
 </script>
 
 <template>
   <div
-    class="min-h-dvh bg-surface-page text-ink flex flex-col"
-    :style="{
-      transform: edgeSwipeDx ? `translateX(${edgeSwipeDx}px)` : undefined,
-      transition: isEdgeSwiping ? 'none' : 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
-      boxShadow: edgeSwipeDx ? '-12px 0 32px rgba(0,0,0,0.22)' : undefined,
-    }"
+    v-if="underlayOpacity > 0"
+    class="fixed inset-0 z-0 bg-black pointer-events-none"
+    :style="{ opacity: underlayOpacity }"
+    aria-hidden="true"
+  ></div>
+
+  <div
+    ref="root"
+    class="screen"
+    :class="{ 'screen--moving': offsetX !== 0 }"
+    :style="screenStyle"
     @touchstart.passive="onTouchStart"
-    @touchmove.passive="onTouchMove"
-    @touchend="onTouchEnd"
+    @touchend.passive="onTouchEnd"
+    @touchcancel.passive="onTouchEnd"
   >
     <AppHeader
       v-if="title"
       :title="title"
       :subtitle="subtitle"
       :back="back"
+      :large="tab"
       :scrolled="scrolled"
     >
       <template #actions><slot name="actions" /></template>
     </AppHeader>
 
-    <!-- Controlled Service Worker Update Banner (PWABuilder / professional-pwa-builder) -->
+    <!-- Pull-to-refresh: the indicator follows the finger, then spins -->
     <div
-      v-if="swUpdateAvailable"
-      class="mx-auto w-full max-w-[36rem] px-4 pt-2"
-    >
-      <button
-        type="button"
-        class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-650 text-white shadow-card active:scale-[0.99] transition"
-        @click="haptics.medium(); applySwUpdate()"
-      >
-        <span class="flex items-center gap-2">
-          <Icon name="spark" :size="15" />
-          New Go Train update ready
-        </span>
-        <span class="px-2.5 py-1 rounded-full bg-white/20 text-[0.6875rem] font-bold">
-          Tap to reload
-        </span>
-      </button>
-    </div>
-
-    <!-- Offline / Queued Sync Status Banner -->
-    <div
-      v-if="!isOnline || pendingSyncCount > 0"
-      class="mx-auto w-full max-w-[36rem] px-4 pt-2"
+      class="ptr"
+      :style="{ height: `${pullDistance}px`, transition: mode === 'pull' ? 'none' : undefined }"
+      aria-hidden="true"
     >
       <div
-        class="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border"
-        :class="
-          !isOnline
-            ? 'bg-warn/10 text-warn border-warn/25'
-            : 'bg-ok/10 text-ok border-ok/25'
-        "
+        class="ptr-spinner"
+        :class="{ 'is-armed': pullDistance >= PULL_TRIGGER, 'animate-spin': refreshing }"
+        :style="!refreshing ? { transform: `rotate(${pullDistance * 3.2}deg) scale(${Math.min(1, pullDistance / 52)})` } : undefined"
       >
+        <Icon name="refresh" :size="16" />
+      </div>
+    </div>
+    <p v-if="refreshing" class="sr-only" role="status">{{ t('pwa.refreshing') }}</p>
+
+    <!-- Status banners -->
+    <div v-if="swUpdateAvailable || !isOnline || pendingSyncCount > 0 || syncFailures.length" class="screen-banners">
+      <button v-if="swUpdateAvailable" type="button" class="banner banner--brand pressable" @click="applySwUpdate()">
+        <span class="flex items-center gap-2"><Icon name="sparkles" :size="15" /> {{ t('pwa.updateReady') }}</span>
+        <span class="banner-action">{{ t('pwa.reload') }}</span>
+      </button>
+
+      <div v-if="!isOnline || pendingSyncCount > 0" class="banner" :class="!isOnline ? 'banner--warn' : 'banner--ok'" role="status">
         <span class="flex items-center gap-2">
           <Icon :name="!isOnline ? 'wifiOff' : 'refresh'" :size="15" />
           {{ !isOnline ? t('pwa.offline') : `${t('pwa.queued')} (${pendingSyncCount})` }}
         </span>
       </div>
-    </div>
 
-    <!-- Offline changes the server rejected -->
-    <div v-if="syncFailures.length" class="mx-auto w-full max-w-[36rem] px-4 pt-2">
-      <div
-        class="flex items-start justify-between gap-3 px-3.5 py-2 rounded-xl text-xs font-medium border bg-bad/10 text-bad border-bad/25"
-        role="alert"
-      >
+      <div v-if="syncFailures.length" class="banner banner--bad" role="alert">
         <span class="min-w-0">
           {{ t('pwa.syncFailed') }} ({{ syncFailures.length }})
           <span class="block text-ink-soft font-normal truncate">{{ syncFailures[syncFailures.length - 1].lastError }}</span>
         </span>
-        <button type="button" class="shrink-0 font-bold underline" @click="dismissSyncFailures">
-          {{ t('pwa.dismiss') }}
-        </button>
+        <button type="button" class="banner-action" @click="dismissSyncFailures">{{ t('pwa.dismiss') }}</button>
       </div>
     </div>
 
-    <!-- Pull-to-refresh spinner indicator -->
-    <div
-      class="mx-auto w-full max-w-[36rem] flex justify-center overflow-hidden transition-all duration-150"
-      :style="{ height: pullDistance ? `${pullDistance}px` : '0px' }"
-      aria-hidden="true"
-    >
-      <div class="flex items-center justify-center">
-        <div
-          class="w-8 h-8 rounded-full bg-surface shadow-card border border-line grid place-items-center text-brand-600"
-          :class="refreshing ? 'animate-spin' : ''"
-          :style="{
-            transform: !refreshing ? `rotate(${pullDistance * 4}deg) scale(${Math.min(1, pullDistance / 48)})` : undefined,
-          }"
-        >
-          <Icon name="refresh" :size="16" />
-        </div>
-      </div>
-    </div>
-
-    <main
-      class="flex-1 mx-auto w-full max-w-[36rem] px-4"
-      :class="tab ? 'pb-[calc(6.75rem+env(safe-area-inset-bottom))]' : 'pb-[calc(2.5rem+env(safe-area-inset-bottom))]'"
-    >
+    <main class="screen-main">
       <slot />
     </main>
-
-    <BottomNav v-if="tab" />
   </div>
 </template>

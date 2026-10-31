@@ -20,12 +20,17 @@ const DICT = {
     'nav.close': 'Close',
     'nav.save': 'Save',
     'nav.today': 'Today',
+    'nav.primary': 'Primary navigation',
+    'nav.unread': '{n} unread',
 
     // Offline & Install
     'pwa.offline': 'Offline mode · showing cached data',
     'pwa.queued': 'Saved offline · will sync when online',
     'pwa.syncFailed': 'Some offline changes could not be saved',
     'pwa.dismiss': 'Dismiss',
+    'pwa.refreshing': 'Refreshing',
+    'pwa.updateReady': 'A new version of Go Train is ready',
+    'pwa.reload': 'Reload',
     'pwa.installTitle': 'Install Go Train App',
     'pwa.installSub': 'Add to your home screen for instant launch & offline workouts',
     'pwa.installBtn': 'Install',
@@ -138,12 +143,17 @@ const DICT = {
     'nav.close': 'إغلاق',
     'nav.save': 'حفظ',
     'nav.today': 'اليوم',
+    'nav.primary': 'التنقل الرئيسي',
+    'nav.unread': '{n} غير مقروءة',
 
     // Offline & Install
     'pwa.offline': 'وضع عدم الاتصال · يتم عرض البيانات المحفوظة',
     'pwa.queued': 'تم الحفظ محلياً · ستتم المزامنة عند الاتصال',
     'pwa.syncFailed': 'تعذّر حفظ بعض التغييرات التي تمت دون اتصال',
     'pwa.dismiss': 'إخفاء',
+    'pwa.refreshing': 'جارٍ التحديث',
+    'pwa.updateReady': 'إصدار جديد من Go Train جاهز',
+    'pwa.reload': 'إعادة التحميل',
     'pwa.installTitle': 'تثبيت تطبيق Go Train',
     'pwa.installSub': 'أضف التطبيق إلى الشاشة الرئيسية للوصول السريع والعمل بدون إنترنت',
     'pwa.installBtn': 'تثبيت',
@@ -246,7 +256,11 @@ const DICT = {
 export const currentLocale = computed(() => (session.user?.locale === 'ar' ? 'ar' : 'en'))
 export const isRtl = computed(() => currentLocale.value === 'ar')
 
-export function t(key, fallback) {
+// t(key), t(key, 'Fallback text'), or t(key, { n: 3 }) to fill {n} placeholders
+export function t(key, fallbackOrParams) {
   const loc = currentLocale.value
-  return DICT[loc]?.[key] ?? DICT.en[key] ?? fallback ?? key
+  const params = typeof fallbackOrParams === 'object' && fallbackOrParams ? fallbackOrParams : null
+  const fallback = params ? undefined : fallbackOrParams
+  const text = DICT[loc]?.[key] ?? DICT.en[key] ?? fallback ?? key
+  return params ? text.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m)) : text
 }

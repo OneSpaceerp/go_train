@@ -47,6 +47,8 @@ const DIRECTIONAL = new Set(['back', 'chevron', 'send', 'logout'])
 const props = defineProps({
   name: String,
   size: { type: [Number, String], default: 22 },
+  // Selected state (e.g. the active tab): tint the glyph's closed shapes
+  filled: { type: Boolean, default: false },
 })
 
 const isDirectional = computed(() => DIRECTIONAL.has(props.name))
@@ -57,9 +59,10 @@ const isDirectional = computed(() => DIRECTIONAL.has(props.name))
     :width="size"
     :height="size"
     viewBox="0 0 24 24"
-    fill="none"
+    :fill="filled ? 'currentColor' : 'none'"
+    :fill-opacity="filled ? 0.2 : undefined"
     stroke="currentColor"
-    stroke-width="2"
+    :stroke-width="filled ? 2.2 : 2"
     stroke-linecap="round"
     stroke-linejoin="round"
     :class="isDirectional ? 'icon-flip' : ''"

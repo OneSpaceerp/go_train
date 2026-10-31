@@ -44,17 +44,11 @@ export default {
         bad: { DEFAULT: 'rgb(var(--bad) / <alpha-value>)' },
         field: 'rgb(var(--field) / <alpha-value>)',
       },
+      // Body/UI on the system font (instant, offline, matches the OS);
+      // Poppins (Cairo in Arabic) as the display face for titles and numbers
       fontFamily: {
-        sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'SF Pro Display',
-          'SF Pro Text',
-          'Poppins',
-          'Cairo',
-          'system-ui',
-          'sans-serif',
-        ],
+        sans: ['var(--font-body)'],
+        display: ['var(--font-display)'],
       },
       borderRadius: {
         field: '0.875rem',

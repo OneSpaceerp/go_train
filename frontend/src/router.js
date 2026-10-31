@@ -1,18 +1,20 @@
-import { ref } from 'vue'
+import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { session, isCoach } from './lib/session.js'
+import { resolveNavigation, commitNavigation, navDirection } from './lib/nav.js'
+import { prefersReducedMotion } from './lib/gestures.js'
+
+export { navDirection }
 
 if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
 }
 
-export const navDirection = ref('tab') // 'tab' | 'forward' | 'backward'
-const scrollPositions = new Map()
-let lastHistoryPos = typeof window !== 'undefined' ? window.history.state?.position ?? 0 : 0
-
 // The SPA is served by Frappe under /gotrain, so vue-router's base is /gotrain.
+// `meta.tab` marks a tab's root screen; every other screen is pushed onto the
+// stack of the tab it was opened from (see lib/nav.js).
 const routes = [
-  { path: '/login', component: () => import('./views/Login.vue'), meta: { public: true } },
+  { path: '/login', component: () => import('./views/Login.vue'), meta: { public: true, hideTabBar: true } },
 
   // Athlete tabs
   { path: '/', component: () => import('./views/Train.vue'), meta: { tab: 'train' } },
@@ -21,12 +23,12 @@ const routes = [
   { path: '/messages', component: () => import('./views/Messages.vue'), meta: { tab: 'messages' } },
   { path: '/profile', component: () => import('./views/Profile.vue'), meta: { tab: 'profile' } },
 
-  // Deeper athlete screens
+  // Pushed screens
   { path: '/history', component: () => import('./views/History.vue') },
   { path: '/programs', component: () => import('./views/Programs.vue') },
   { path: '/programs/:id', component: () => import('./views/ProgramDetail.vue') },
   { path: '/workouts/:id', component: () => import('./views/WorkoutDetail.vue') },
-  { path: '/threads/:id', component: () => import('./views/Thread.vue') },
+  { path: '/threads/:id', component: () => import('./views/Thread.vue'), meta: { hideTabBar: true } },
   { path: '/notifications', component: () => import('./views/Notifications.vue') },
   { path: '/exercises', component: () => import('./views/Exercises.vue') },
   { path: '/marketplace', component: () => import('./views/Marketplace.vue') },
@@ -38,14 +40,23 @@ const routes = [
   { path: '/coach/programs', component: () => import('./views/CoachPrograms.vue'), meta: { tab: 'programs', coach: true } },
 ]
 
+// Scroll offsets per screen, so returning to a tab or popping back lands
+// exactly where the user left it.
+const scrollPositions = new Map()
+let navInfo = { tab: null, direction: 'none' }
+let finishTransition = null
+
+const RESTORES_SCROLL = new Set(['backward', 'swipe-back', 'tab', 'swipe-left', 'swipe-right'])
+
 export const router = createRouter({
   history: createWebHistory('/gotrain'),
   routes,
-  scrollBehavior(to, _from, savedPosition) {
+  scrollBehavior(to, from, savedPosition) {
+    // Same screen (back closing a sheet, query-only change): leave scroll alone
+    if (to.path === from.path && from.matched.length) return false
     if (savedPosition) return savedPosition
-    if (navDirection.value === 'backward' || to.meta.tab) {
-      const saved = scrollPositions.get(to.fullPath)
-      if (saved != null) return { top: saved }
+    if (RESTORES_SCROLL.has(navInfo.direction)) {
+      return { top: scrollPositions.get(to.fullPath) ?? 0 }
     }
     return { top: 0 }
   },
@@ -56,24 +67,77 @@ router.beforeEach((to, from) => {
     scrollPositions.set(from.fullPath, window.scrollY || 0)
   }
 
-  if (to.meta.public) return true
-  if (!session.user) {
+  if (!to.meta.public && !session.user) {
     return { path: '/login', query: to.fullPath !== '/' ? { 'redirect-to': to.fullPath } : {} }
   }
   if (to.meta.coach && !isCoach()) return { path: '/' }
+
+  navInfo = resolveNavigation(to, from, window.history.state?.position ?? 0)
   return true
 })
 
-router.afterEach((to, from) => {
-  if (typeof window === 'undefined') return
-  const currentPos = window.history.state?.position ?? lastHistoryPos
-  if (to.meta.tab && from.meta.tab) {
-    navDirection.value = 'tab'
-  } else if (currentPos < lastHistoryPos) {
-    navDirection.value = 'backward'
-  } else {
-    navDirection.value = 'forward'
-  }
-  lastHistoryPos = currentPos
-  document.documentElement.dataset.direction = navDirection.value
+function canAnimate(direction) {
+  return (
+    typeof document !== 'undefined' &&
+    typeof document.startViewTransition === 'function' &&
+    direction !== 'none' &&
+    document.visibilityState === 'visible' &&
+    !prefersReducedMotion()
+  )
+}
+
+// Run the DOM swap inside a View Transition: the browser snapshots the old
+// screen, Vue renders the new one, and CSS (style.css) animates between them
+// by direction. Unsupported browsers or reduced motion get an instant cut.
+router.beforeResolve(() => {
+  const { direction } = navInfo
+  if (!canAnimate(direction)) return true
+  const root = document.documentElement
+  root.dataset.nav = direction
+
+  return new Promise((resolve) => {
+    const fallback = setTimeout(resolve, 300)
+    const transition = document.startViewTransition(
+      () =>
+        new Promise((done) => {
+          clearTimeout(fallback)
+          finishTransition = done
+          resolve(true)
+          setTimeout(done, 800) // never freeze the page if a navigation stalls
+        }),
+    )
+    transition.finished.finally(() => {
+      if (root.dataset.nav === direction) delete root.dataset.nav
+    })
+  })
 })
+
+router.afterEach((to, _from, failure) => {
+  if (!failure) commitNavigation(to, navInfo)
+  const done = finishTransition
+  finishTransition = null
+  // Wait for the new screen to render (and the scroll restore) before the
+  // transition takes its "after" snapshot.
+  nextTick().then(() => {
+    done?.()
+    if (!failure) focusScreenHeading()
+  })
+})
+
+router.onError(() => {
+  finishTransition?.()
+  finishTransition = null
+})
+
+// Move focus to the new screen's title for keyboard and screen-reader users,
+// as a native navigation controller does. Touch users are left alone.
+function focusScreenHeading() {
+  if (typeof document === 'undefined' || document.documentElement.dataset.input !== 'keyboard') return
+  const heading = document.querySelector('[data-screen-title]')
+  heading?.focus({ preventScroll: true })
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', () => (document.documentElement.dataset.input = 'keyboard'), true)
+  window.addEventListener('pointerdown', () => (document.documentElement.dataset.input = 'pointer'), true)
+}
