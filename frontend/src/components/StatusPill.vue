@@ -5,8 +5,9 @@ const props = defineProps({ status: String })
 const MAP = {
   done: ['Done', 'ok'], missed: ['Missed', 'bad'], active: ['Active', 'brand'],
   paused: ['Paused', 'warn'], ended: ['Ended', 'mute'], pending: ['Pending', 'warn'],
+  available: ['Available', 'mute'],
 }
-const info = computed(() => MAP[props.status] || [props.status, 'brand'])
+const info = computed(() => MAP[String(props.status || '').toLowerCase()] || [props.status, 'brand'])
 const classes = computed(() => ({
   ok: 'text-ok border-ok/30 bg-ok/10',
   bad: 'text-bad border-bad/30 bg-bad/10',

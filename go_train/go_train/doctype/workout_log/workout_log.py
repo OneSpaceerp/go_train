@@ -2,8 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
-from frappe.utils import today
+from frappe.utils import cint, today
 
 
 class WorkoutLog(Document):
@@ -12,8 +13,8 @@ class WorkoutLog(Document):
 			self.log_date = today()
 		if self.workout and not self.program:
 			self.program = frappe.db.get_value("Workout", self.workout, "program")
-		if self.rpe is not None and str(self.rpe).strip() != "":
-			rpe_val = int(self.rpe)
-			if rpe_val < 1 or rpe_val > 10:
-				frappe.throw("RPE must be between 1 and 10")
-			self.rpe = rpe_val
+		# Int columns store 0 for "not entered", so only validate a real rating
+		rpe_val = cint(self.rpe)
+		if rpe_val and not 1 <= rpe_val <= 10:
+			frappe.throw(_("RPE must be between 1 and 10"))
+		self.rpe = rpe_val or None

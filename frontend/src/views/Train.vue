@@ -52,66 +52,63 @@ async function selectProgram(prog) {
   }
 }
 
+// Workouts are loaded per month window (the server pads each month by a week)
+// instead of one request per program.
+const loadedMonths = new Set()
+
+function mergeWorkouts(list) {
+  const byId = new Map(workouts.value.map((w) => [w.id, w]))
+  for (const w of list || []) byId.set(w.id, w)
+  // Newest first, matching the per-program workout lists
+  workouts.value = Array.from(byId.values()).sort((a, b) =>
+    String(b.scheduled_on || '').localeCompare(String(a.scheduled_on || '')),
+  )
+}
+
+async function ensureMonth(month) {
+  if (!month || loadedMonths.has(month)) return
+  loadedMonths.add(month)
+  try {
+    const [feed, cal] = await Promise.all([
+      api.get(`/feed?month=${month}`),
+      api.get(`/calendar?month=${month}`),
+    ])
+    mergeWorkouts(feed)
+    const byId = new Map(calendar.value.map((e) => [e.id, e]))
+    for (const e of cal || []) byId.set(e.id, e)
+    calendar.value = Array.from(byId.values())
+  } catch {
+    loadedMonths.delete(month)
+  }
+}
+
 async function load() {
   try {
+    loadedMonths.clear()
     // Isolate each endpoint with .catch() so a failure in one never blocks workouts
-    const [progs, cal, cls] = await Promise.all([
+    const [progs, cal, feed, cls] = await Promise.all([
       api.get('/programs').catch(() => []),
       api.get('/calendar').catch(() => []),
+      api.get('/feed').catch(() => []),
       api.get('/classes').catch(() => null),
     ])
     programs.value = progs || []
     calendar.value = cal || []
     classInfo.value = cls
+    workouts.value = []
+    mergeWorkouts(feed)
+    // The default window covers last, this and next month
+    for (const n of [-1, 0, 1]) loadedMonths.add(dayjs().add(n, 'month').format('YYYY-MM'))
 
-    if (programs.value.length) {
-      // Fetch workouts across all programs that have workouts (or all programs if counts aren't populated)
-      const candidateProgs = programs.value.filter((p) => (p.workout_count ?? 1) > 0)
-      const targetProgs = candidateProgs.length ? candidateProgs : programs.value
+    const firstWithWorkouts = programs.value.find((p) => workouts.value.some((w) => w.program_id === p.id))
+    activeProgram.value =
+      firstWithWorkouts || programs.value.find((p) => p.status === 'Active') || programs.value[0] || null
 
-      const perProgLists = await Promise.all(
-        targetProgs.map((p) =>
-          api
-            .get(`/programs/${p.id}/workouts`)
-            .then((list) =>
-              (list || []).map((w) => ({
-                ...w,
-                program_name: p.name,
-                program_id: p.id,
-              })),
-            )
-            .catch(() => []),
-        ),
+    if (!expanded.value && workouts.value.length) {
+      const onSelected = workouts.value.find(
+        (w) => w.scheduled_on && dayjs(w.scheduled_on).format('YYYY-MM-DD') === selectedDay.value,
       )
-
-      // Pick the first program that actually returned workouts as activeProgram
-      const firstNonEmptyIdx = perProgLists.findIndex((list) => list.length > 0)
-      activeProgram.value =
-        firstNonEmptyIdx >= 0
-          ? targetProgs[firstNonEmptyIdx]
-          : programs.value.find((p) => p.is_active) || programs.value[0]
-
-      // Merge workouts across all programs (deduplicated by workout ID) so no workout is ever hidden
-      const seen = new Set()
-      const merged = []
-      for (const list of perProgLists) {
-        for (const w of list) {
-          if (!seen.has(w.id)) {
-            seen.add(w.id)
-            merged.push(w)
-          }
-        }
-      }
-      workouts.value = merged
-
-      if (!expanded.value && workouts.value.length) {
-        const onSelected = workouts.value.find(
-          (w) =>
-            w.scheduled_on &&
-            dayjs(w.scheduled_on).format('YYYY-MM-DD') === selectedDay.value,
-        )
-        expanded.value = (onSelected || workouts.value[0]).id
-      }
+      expanded.value = (onSelected || workouts.value[0]).id
     }
 
     api.get('/notifications').catch(() => {})
@@ -221,6 +218,7 @@ const heroWorkout = computed(() => {
 function onPick(date) {
   haptics.select()
   selectedDay.value = date
+  ensureMonth(dayjs(date).format('YYYY-MM'))
   const first = workouts.value.find(
     (w) => w.scheduled_on && dayjs(w.scheduled_on).format('YYYY-MM-DD') === date,
   )
@@ -321,6 +319,7 @@ function onPick(date) {
         :events="mergedCalendarEvents"
         :modelValue="selectedDay"
         @pick="onPick"
+        @month="ensureMonth"
       />
 
       <!-- Compact 7-Day Week Strip (Thumb-friendly 44x56pt targets) -->

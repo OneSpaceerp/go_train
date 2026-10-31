@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import { router } from './router.js'
 import { applyTheme, applyLocale, initFromBoot, setUser } from './lib/session.js'
-import { api } from './lib/api.js'
+import { api, flushQueue } from './lib/api.js'
 import { dismissSplash } from './lib/splash.js'
 import { registerPwaServiceWorker, initVisualViewportKeyboard } from './lib/pwa.js'
 import { initStoragePersistence } from './lib/permissions.js'
@@ -43,6 +43,10 @@ async function start() {
   applyLocale()
   createApp(App).use(router).mount('#app')
   registerPwaServiceWorker(router)
+
+  // Replay changes saved offline in a previous session (the `online` event
+  // won't fire if the app was closed offline and reopened online).
+  if (user && navigator.onLine) flushQueue()
 
   // Let the multi-stage launch choreography finish before revealing the app.
   dismissSplash()

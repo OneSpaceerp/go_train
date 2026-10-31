@@ -26,6 +26,7 @@ async function submit() {
     if (!res.ok) throw new Error(data.message || 'Wrong email or password')
     initFromBoot({ user: email.value, full_name: data.full_name || '' })
     try {
+      // boot() also returns the new session's CSRF token
       const me = await api.get('/auth/me')
       if (me?.user) setUser(me.user)
     } catch {}

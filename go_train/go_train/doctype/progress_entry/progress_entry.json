@@ -11,7 +11,9 @@
   "value",
   "unit",
   "recorded_on",
-  "notes"
+  "notes",
+  "workout_log",
+  "client_op_id"
  ],
  "fields": [
   {
@@ -56,12 +58,27 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
+  },
+  {
+   "fieldname": "workout_log",
+   "fieldtype": "Link",
+   "label": "Workout Log",
+   "options": "Workout Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "client_op_id",
+   "fieldtype": "Data",
+   "label": "Client Operation ID",
+   "hidden": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 0,
  "links": [],
- "modified": "2026-10-24 00:00:00.000000",
+ "modified": "2026-10-31 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Progress Entry",

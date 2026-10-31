@@ -13,13 +13,42 @@ import {
   setUnreadBadge,
 } from './pwa.js'
 
+// Refreshed from every boot() response: the token embedded in the page belongs
+// to the session that rendered it (e.g. Guest before an in-app login).
+let liveCsrfToken = ''
+
+export function setCsrfToken(token) {
+  if (token) liveCsrfToken = token
+}
+
 export function csrfToken() {
+  if (liveCsrfToken) return liveCsrfToken
   try {
     const boot = JSON.parse(document.getElementById('go-train-boot')?.textContent || '{}')
     if (boot.csrf_token && !String(boot.csrf_token).includes('{{')) return boot.csrf_token
   } catch {}
   const meta = document.querySelector('meta[name="csrf-token"]')?.content
   return meta && !meta.includes('{{') ? meta : ''
+}
+
+// Readable message from a Frappe error response (`_server_messages` is a JSON
+// list of JSON-encoded {message} objects).
+export function serverMessage(data) {
+  try {
+    const msgs = JSON.parse(data?._server_messages || '[]')
+      .map((m) => { try { return JSON.parse(m).message } catch { return m } })
+      .filter(Boolean)
+    if (msgs.length) return msgs.join('\n').replace(/<[^>]+>/g, '')
+  } catch {}
+  return typeof data?.message === 'string' ? data.message : data?.exception || ''
+}
+
+export class ApiError extends Error {
+  constructor(message, { status = 0, network = false } = {}) {
+    super(message)
+    this.status = status
+    this.network = network
+  }
 }
 
 async function frappe(method, { args = {}, httpMethod = 'GET' } = {}) {
@@ -34,16 +63,24 @@ async function frappe(method, { args = {}, httpMethod = 'GET' } = {}) {
   } else {
     init.body = JSON.stringify(args)
   }
-  const res = await fetch(finalUrl, init)
+  let res
+  try {
+    res = await fetch(finalUrl, init)
+  } catch {
+    throw new ApiError('You appear to be offline', { network: true })
+  }
+  const data = res.headers.get('content-type')?.includes('json') ? await res.json().catch(() => null) : null
   if (res.status === 401 || res.status === 403) {
     if (await isGuest()) {
       clearSession()
       if (!location.pathname.includes('/login')) location.assign('/gotrain/login')
+      throw new ApiError('Not signed in', { status: res.status })
     }
-    throw new Error('Not signed in')
+    throw new ApiError(serverMessage(data) || 'You don’t have access to this', { status: res.status })
   }
-  const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null
-  if (!res.ok) throw new Error(data?._server_messages || data?.exception || `Request failed (${res.status})`)
+  if (!res.ok) {
+    throw new ApiError(serverMessage(data) || `Request failed (${res.status})`, { status: res.status })
+  }
   return data?.message
 }
 
@@ -59,7 +96,9 @@ async function isGuest() {
 export async function uploadFile(file) {
   const form = new FormData()
   form.append('file', file, file.name)
-  form.append('is_private', '0')
+  // Private: served only to the uploader and to users who can read the
+  // Workout Log it gets attached to (the athlete's coach).
+  form.append('is_private', '1')
   const res = await fetch('/api/method/upload_file', {
     method: 'POST',
     headers: { 'X-Frappe-CSRF-Token': csrfToken() },
@@ -68,7 +107,7 @@ export async function uploadFile(file) {
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok || !data.message?.file_url) {
-    throw new Error(data.message || 'Upload failed')
+    throw new Error(serverMessage(data) || 'Upload failed')
   }
   return {
     url: data.message.file_url,
@@ -109,16 +148,24 @@ async function dispatch(httpMethod, rawPath, body) {
   // Auth & Profile
   if (path === '/auth/me' && httpMethod === 'GET') {
     const boot = await frappe('boot')
+    setCsrfToken(boot?.csrf_token)
     return { user: boot }
   }
   if (path === '/auth/me' && httpMethod === 'PATCH') {
     const updated = await frappe('update_profile', { httpMethod: 'POST', args: body })
+    setCsrfToken(updated?.csrf_token)
     return { user: updated }
   }
 
   // Calendar, Programs & Workouts
   if (path === '/calendar' && httpMethod === 'GET') {
     return frappe('get_calendar', { args: { month: q.get('month') || '' } })
+  }
+  if (path === '/feed' && httpMethod === 'GET') {
+    return (await frappe('get_feed', { args: { month: q.get('month') || '' } })).map((w) => ({
+      ...workout(w),
+      program_id: w.program,
+    }))
   }
   if (path === '/programs' && httpMethod === 'GET') {
     return (await frappe('get_programs')).map(program)
@@ -164,6 +211,8 @@ async function dispatch(httpMethod, rawPath, body) {
         attachment: body.attachment_url,
         attachment_name: body.attachment_name,
         set_logs: body.set_logs,
+        client_time: body.client_time,
+        client_op_id: body.client_op_id,
       },
     })
   }
@@ -189,6 +238,8 @@ async function dispatch(httpMethod, rawPath, body) {
         unit: body.unit || 'kg',
         recorded_date: body.recorded_date,
         notes: body.notes,
+        client_time: body.client_time,
+        client_op_id: body.client_op_id,
       },
     })
   }
@@ -207,7 +258,12 @@ async function dispatch(httpMethod, rawPath, body) {
   if (path === '/checkin' && httpMethod === 'POST') {
     return frappe('check_in', {
       httpMethod: 'POST',
-      args: { session: body.session, facility: body.facility },
+      args: {
+        session: body.session,
+        facility: body.facility,
+        client_time: body.client_time,
+        client_op_id: body.client_op_id,
+      },
     })
   }
 
@@ -254,6 +310,9 @@ async function dispatch(httpMethod, rawPath, body) {
 
   // Coach
   if (path === '/coach/clients' && httpMethod === 'GET') return frappe('get_coach_clients')
+  if (path === '/coach/programs' && httpMethod === 'GET') {
+    return (await frappe('get_coach_programs')).map(program)
+  }
   if (path === '/coach/programs' && httpMethod === 'POST') {
     return frappe('create_coach_program', {
       httpMethod: 'POST',
@@ -263,6 +322,7 @@ async function dispatch(httpMethod, rawPath, body) {
         sport: body.sport,
         kind: body.kind || 'Ongoing',
         price: body.price || 0,
+        is_published: body.is_published ? 1 : 0,
       },
     })
   }
@@ -277,6 +337,21 @@ async function dispatch(httpMethod, rawPath, body) {
   return httpMethod === 'GET' ? [] : {}
 }
 
+// Device wall-clock time, sent with queued mutations so a replayed log or
+// check-in keeps the date it actually happened (the server clamps it).
+function localTimestamp(d = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+function newOpId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `op-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+const isQueueable = (p) => /^\/workouts\/[^/]+\/log$/.test(p) || p === '/tracking' || p === '/checkin'
+
 export const api = {
   cached: (p) => readCache(p),
   get: async (p) => {
@@ -285,19 +360,25 @@ export const api = {
       writeCache(p, data)
       return data
     } catch (err) {
-      const cached = readCache(p)
-      if (cached !== null) return cached
+      // Only fall back to cached data when the server is unreachable; a
+      // permission or validation error must not show stale data silently.
+      if (err?.network) {
+        const cached = readCache(p)
+        if (cached !== null) return cached
+      }
       throw err
     }
   },
   post: async (p, b) => {
-    const body = b ?? {}
+    const body = { ...(b ?? {}) }
+    if (isQueueable(p)) {
+      body.client_time ??= localTimestamp()
+      body.client_op_id ??= newOpId()
+    }
     try {
       return await dispatch('POST', p, body)
     } catch (err) {
-      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
-      const queueable = /^\/workouts\/[^/]+\/log$/.test(p) || p === '/tracking' || p === '/checkin'
-      if (isOffline && queueable) {
+      if (err?.network && isQueueable(p)) {
         enqueueOfflineMutation({ method: 'POST', path: p, body })
         return { ok: true, queued: true }
       }
@@ -307,8 +388,8 @@ export const api = {
   patch: (p, b) => dispatch('PATCH', p, b ?? {}),
 }
 
+export const flushQueue = () => flushOfflineQueue((item) => dispatch(item.method, item.path, item.body))
+
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    flushOfflineQueue((item) => dispatch(item.method, item.path, item.body))
-  })
+  window.addEventListener('online', flushQueue)
 }

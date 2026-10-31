@@ -7,6 +7,7 @@ import StatusPill from '../components/StatusPill.vue'
 import Icon from '../components/Icon.vue'
 import Stopwatch from '../components/Stopwatch.vue'
 import { api, uploadFile } from '../lib/api.js'
+import { session } from '../lib/session.js'
 import { niceDate } from '../lib/format.js'
 import { highlight } from '../lib/search.js'
 import { haptics } from '../lib/haptics.js'
@@ -35,6 +36,10 @@ const uploading = ref(false)
 const uploadError = ref('')
 const saving = ref(false)
 const saved = ref(false)
+const saveError = ref('')
+const commentError = ref('')
+const queuedOffline = ref(false)
+const weightUnit = computed(() => session.user?.settings?.default_weight_unit || 'kg')
 const showTimer = ref(false)
 
 // Inline Rest Timer triggered automatically when ticking a set
@@ -150,12 +155,10 @@ function buildInitialSets(detail) {
 }
 
 async function load() {
-  const [detail, history] = await Promise.all([
-    api.get(`/workouts/${route.params.id}`),
-    api.get(`/workouts/${route.params.id}/logs`),
-  ])
+  // One request: the detail already includes the member's logs
+  const detail = await api.get(`/workouts/${route.params.id}`)
   w.value = detail
-  logs.value = history
+  logs.value = detail.logs || []
   const latest = detail.log
   result.value = latest?.result || ''
   details.value = latest?.details || ''
@@ -228,6 +231,8 @@ async function onFile(e) {
 
 async function saveLog(status = 'done') {
   saving.value = true
+  saveError.value = ''
+  queuedOffline.value = false
   haptics.medium()
   try {
     // Auto-summarize completed sets into `result` if athlete left `result` blank
@@ -236,10 +241,10 @@ async function saveLog(status = 'done') {
     )
     if (!result.value.trim() && validSets.length) {
       const top = validSets[validSets.length - 1]
-      result.value = `${validSets.length} sets · Top: ${top.exercise} ${top.weight ? top.weight + ' kg' : ''} × ${top.reps || 1}`.trim()
+      result.value = `${validSets.length} sets · Top: ${top.exercise} ${top.weight ? `${top.weight} ${weightUnit.value}` : ''} × ${top.reps || 1}`.trim()
     }
 
-    await api.post(`/workouts/${route.params.id}/log`, {
+    const res = await api.post(`/workouts/${route.params.id}/log`, {
       status,
       result: result.value,
       details: details.value,
@@ -258,8 +263,14 @@ async function saveLog(status = 'done') {
     haptics.success()
     saved.value = true
     setTimeout(() => (saved.value = false), 2200)
-    await load()
-  } catch {
+    if (res?.queued) {
+      // Saved to the offline queue; reloading would fetch the stale cached log
+      queuedOffline.value = true
+    } else {
+      await load()
+    }
+  } catch (err) {
+    saveError.value = err?.message || 'Could not save your result'
     haptics.error()
   } finally {
     saving.value = false
@@ -274,7 +285,15 @@ function useTimer(sec) {
 async function addComment() {
   if (!comment.value.trim()) return
   haptics.tap()
-  const c = await api.post(`/workouts/${route.params.id}/comments`, { body: comment.value })
+  commentError.value = ''
+  let c
+  try {
+    c = await api.post(`/workouts/${route.params.id}/comments`, { body: comment.value })
+  } catch (err) {
+    commentError.value = err?.message || 'Could not post your comment'
+    haptics.error()
+    return
+  }
   w.value.comments.push(c)
   comment.value = ''
   await nextTick()
@@ -517,7 +536,7 @@ function onFindInput() {
                 step="any"
                 inputmode="decimal"
                 class="h-10 px-1.5 rounded-xl bg-surface border border-line/80 text-sm font-semibold tabular-nums text-center text-ink outline-none focus:border-brand-600"
-                placeholder="kg"
+                :placeholder="weightUnit"
               />
               <input
                 v-model="row.reps"
@@ -685,6 +704,8 @@ function onFindInput() {
               {{ t('workout.markMissed') }}
             </button>
           </div>
+          <p v-if="saveError" class="text-bad text-sm mt-2" role="alert">{{ saveError }}</p>
+          <p v-else-if="queuedOffline" class="text-warn text-sm mt-2" role="status">{{ t('pwa.queued') }}</p>
         </section>
 
         <!-- Coach & Athlete Comments -->
@@ -728,6 +749,7 @@ function onFindInput() {
               <Icon name="send" :size="18" />
             </button>
           </div>
+          <p v-if="commentError" class="text-bad text-sm mt-2" role="alert">{{ commentError }}</p>
         </section>
 
         <!-- Class Leaderboard & Previous Results -->

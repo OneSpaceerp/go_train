@@ -4,15 +4,43 @@
 """
 Whitelisted endpoints consumed by the /gotrain athlete & coach PWA.
 All endpoints run as the signed-in Frappe User and scope data to the
-linked Member or Coach record.
+linked Member or Coach record. Writes use ignore_permissions only after
+the explicit ownership / role checks in this module.
 """
 
+import html
 import json
 import os
+
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, now_datetime, today
+from frappe.utils import (
+	add_days,
+	add_months,
+	cint,
+	flt,
+	get_datetime,
+	get_first_day,
+	get_last_day,
+	getdate,
+	now_datetime,
+	today,
+)
 from werkzeug.wrappers import Response
+
+from go_train import __version__
+from go_train.permissions import (
+	STAFF_ROLES,
+	accessible_program_ids,
+	get_coach_for_user,
+	get_member_for_user,
+	is_manager,
+	is_staff,
+	viewable_program_ids,
+)
+
+LOG_STATUSES = ("Done", "Missed", "Partial")
+MAX_SET_ROWS = 100
 
 
 # ---------------------------------------------------------------------------
@@ -24,9 +52,7 @@ def check_app_permission():
 	"""Check if the signed-in user has access to the Go Train Desk tile on /apps."""
 	if frappe.session.user == "Administrator":
 		return True
-	roles = set(frappe.get_roles(frappe.session.user))
-	staff_roles = {"System Manager", "Gym Manager", "Coach", "Front Desk"}
-	if roles & staff_roles:
+	if is_staff():
 		return True
 	user_type = frappe.db.get_value("User", frappe.session.user, "user_type")
 	return user_type == "System User"
@@ -34,21 +60,18 @@ def check_app_permission():
 
 @frappe.whitelist(allow_guest=True)
 def sw():
-	"""Serve the PWA service worker with Service-Worker-Allowed: /gotrain."""
+	"""Serve the PWA service worker with Service-Worker-Allowed: /gotrain.
+
+	The build inlines the Workbox runtime and prefixes every precache URL with
+	/assets/go_train/frontend/ (see frontend/vite.config.js), so the file is
+	served verbatim from this endpoint.
+	"""
 	sw_path = os.path.join(frappe.get_app_path("go_train"), "public", "frontend", "sw.js")
 	if not os.path.exists(sw_path):
 		return Response("// Service worker not built yet", status=404, mimetype="application/javascript")
 
 	with open(sw_path, encoding="utf-8") as f:
 		content = f.read()
-
-	base = "/assets/go_train/frontend/"
-	content = (
-		content.replace('define(["./workbox-', f'define(["{base}workbox-')
-		.replace('url:"assets/', f'url:"{base}assets/')
-		.replace('url:"manifest.webmanifest"', f'url:"{base}manifest.webmanifest"')
-		.replace('url:"sw-custom.js"', f'url:"{base}sw-custom.js"')
-	)
 
 	return Response(
 		content,
@@ -61,52 +84,41 @@ def sw():
 
 
 # ---------------------------------------------------------------------------
-# Member & Coach resolution helpers
+# Access helpers
 # ---------------------------------------------------------------------------
 
 
-def _get_coach_for_user(user: str | None = None) -> str | None:
-	user = user or frappe.session.user
-	if user == "Guest":
-		return None
-	return frappe.db.get_value("Coach", {"user": user, "is_active": 1}, "name")
-
-
-def _is_staff_or_coach(user: str | None = None) -> bool:
-	user = user or frappe.session.user
-	if user == "Administrator":
-		return True
-	roles = set(frappe.get_roles(user))
-	if roles & {"System Manager", "Gym Manager", "Coach"}:
-		return True
-	return bool(_get_coach_for_user(user))
-
-
-def _get_or_create_member() -> str:
-	"""Return the Member name linked to the current Frappe user, creating one on first visit."""
+def _current_member(create: bool = True) -> str | None:
+	"""Member linked to the signed-in user. Athletes get one created on first
+	visit; staff never do, so coaches and managers don't pollute rosters."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please sign in"), frappe.PermissionError)
 
-	member = frappe.db.get_value("Member", {"user": user}, "name")
-	if member:
+	member = get_member_for_user(user)
+	if member or not create or is_staff(user):
 		return member
 
 	u = frappe.db.get_value(
 		"User", user, ["full_name", "email", "mobile_no", "user_image"], as_dict=True
-	) or {}
-	by_email = u.get("email") and frappe.db.get_value("Member", {"email": u.email}, "name")
-	if by_email:
-		frappe.db.set_value("Member", by_email, "user", user)
-		return by_email
+	) or frappe._dict()
+	if u.email:
+		# Adopt a Member that staff created for this person, as long as it isn't
+		# already linked to another login.
+		unlinked = frappe.db.get_value("Member", {"email": u.email, "user": ["is", "not set"]}, "name")
+		if unlinked:
+			frappe.db.set_value("Member", unlinked, "user", user)
+			# Frappe only commits POST-type requests; keep this even on a GET (e.g. boot)
+			frappe.local.flags.commit = True
+			return unlinked
 
 	doc = frappe.get_doc(
 		{
 			"doctype": "Member",
-			"full_name": u.get("full_name") or user,
-			"email": u.get("email") or user,
-			"mobile_no": u.get("mobile_no"),
-			"avatar": u.get("user_image"),
+			"full_name": u.full_name or user,
+			"email": u.email or user,
+			"mobile_no": u.mobile_no,
+			"avatar": u.user_image,
 			"user": user,
 			"status": "Active",
 			"join_date": today(),
@@ -114,27 +126,165 @@ def _get_or_create_member() -> str:
 			"theme": "system",
 		}
 	).insert(ignore_permissions=True)
+	frappe.local.flags.commit = True
 	return doc.name
 
 
-def _get_settings() -> dict:
+def _require_member() -> str:
+	member = _current_member()
+	if not member:
+		frappe.throw(_("Your account is not linked to a member profile. Ask the front desk to link one."))
+	return member
+
+
+def _require_coach() -> str | None:
+	"""Allow coaches with an active Coach record and gym managers. Returns the
+	Coach name (None for a manager without a Coach record)."""
+	coach = get_coach_for_user()
+	if coach or is_manager():
+		return coach
+	frappe.throw(_("Coach access required"), frappe.PermissionError)
+
+
+def _client_filters(coach: str | None) -> dict:
+	"""Members a coach may manage: their own clients, or everyone for managers."""
+	return {} if is_manager() else {"coach": coach}
+
+
+def _can_access_member(member: str) -> bool:
+	if member and member == get_member_for_user():
+		return True
+	if is_manager():
+		return True
+	coach = get_coach_for_user()
+	return bool(coach) and frappe.db.get_value("Member", member, "coach") == coach
+
+
+def _assert_program_manageable(program: str):
+	if not frappe.db.exists("Training Program", program):
+		frappe.throw(_("Program not found"), frappe.DoesNotExistError)
+	if is_manager():
+		return
+	coach = get_coach_for_user()
+	if not coach or frappe.db.get_value("Training Program", program, "coach") != coach:
+		frappe.throw(_("You can only edit your own programs"), frappe.PermissionError)
+
+
+def _assert_program_viewable(program: str):
+	if not frappe.db.exists("Training Program", program):
+		frappe.throw(_("Program not found"), frappe.DoesNotExistError)
+	if is_staff():
+		return
+	if program not in viewable_program_ids(get_member_for_user()):
+		frappe.throw(_("You don't have access to this program"), frappe.PermissionError)
+
+
+def _assert_workout_access(workout: str) -> str:
+	"""Members may open workouts in programs they can view, plus any workout
+	they have already logged (e.g. after an enrollment ended)."""
+	program = frappe.db.get_value("Workout", workout, "program")
+	if not program:
+		frappe.throw(_("Workout not found"), frappe.DoesNotExistError)
+	if is_staff():
+		return program
+	member = get_member_for_user()
+	if program in viewable_program_ids(member):
+		return program
+	if member and frappe.db.exists("Workout Log", {"member": member, "workout": workout}):
+		return program
+	frappe.throw(_("You don't have access to this workout"), frappe.PermissionError)
+
+
+def _staff_users() -> set[str]:
+	with_role = frappe.get_all(
+		"Has Role",
+		filters={"parenttype": "User", "role": ["in", list(STAFF_ROLES)]},
+		pluck="parent",
+	)
+	coaches = frappe.get_all("Coach", filters={"user": ["is", "set"]}, pluck="user")
+	return {"Administrator", *with_role, *coaches}
+
+
+def _without_staff(members: list) -> list:
+	"""Drop Member rows that belong to staff logins (created before staff were
+	excluded from auto-provisioning)."""
+	staff = _staff_users()
+	return [m for m in members if not m.get("user") or m.get("user") not in staff]
+
+
+def _display_name(member: str | None = None) -> str:
+	if member:
+		name = frappe.db.get_value("Member", member, "full_name")
+		if name:
+			return name
+	return frappe.db.get_value("User", frappe.session.user, "full_name") or frappe.session.user
+
+
+def _comment_text(content: str | None) -> str:
+	"""Plain text for a Comment body stored as (escaped) HTML."""
+	return html.unescape(frappe.utils.strip_html_tags(content or "")).strip()
+
+
+def _like(q: str | None) -> str:
+	"""LIKE pattern for a user search term, with wildcards escaped."""
+	q = (q or "").strip()
+	return "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def _client_datetime(client_time: str | None = None):
+	"""When an offline action is replayed, use the time it happened on the
+	device, within a sane window (no future times, at most 7 days old)."""
+	now = now_datetime()
+	if not client_time:
+		return now
 	try:
-		s = frappe.get_single("Go Train Settings")
-		return {
-			"gym_name": getattr(s, "gym_name", None) or "Go Train Gym",
-			"default_currency": getattr(s, "default_currency", None) or "USD",
-			"default_weight_unit": getattr(s, "default_weight_unit", None) or "kg",
-			"members_can_self_book": cint(getattr(s, "members_can_self_book", 1)),
-			"members_can_self_checkin": cint(getattr(s, "members_can_self_checkin", 1)),
-		}
+		when = get_datetime(client_time)
 	except Exception:
-		return {
-			"gym_name": "Go Train Gym",
-			"default_currency": "USD",
-			"default_weight_unit": "kg",
-			"members_can_self_book": 1,
-			"members_can_self_checkin": 1,
-		}
+		return now
+	if not when or when > now or when < add_days(now, -7):
+		return now
+	return when
+
+
+def _group_count(doctype: str, field: str, values, where: str = "", params: dict | None = None) -> dict:
+	"""{value: count} for rows of `doctype` grouped by `field` (one query)."""
+	values = [v for v in values if v]
+	if not values:
+		return {}
+	rows = frappe.db.sql(
+		f"select `{field}`, count(*) from `tab{doctype}` where `{field}` in %(values)s {where} group by `{field}`",
+		{"values": tuple(values), **(params or {})},
+	)
+	return {r[0]: cint(r[1]) for r in rows}
+
+
+def _name_map(doctype: str, names, field: str) -> dict:
+	names = list({n for n in names if n})
+	if not names:
+		return {}
+	rows = frappe.get_all(doctype, filters={"name": ["in", names]}, fields=["name", field])
+	return {r.name: r.get(field) or r.name for r in rows}
+
+
+def _get_settings() -> dict:
+	defaults = {
+		"gym_name": "Go Train Gym",
+		"default_currency": "USD",
+		"default_weight_unit": "kg",
+		"members_can_self_book": 1,
+		"members_can_self_checkin": 1,
+	}
+	try:
+		s = frappe.get_cached_doc("Go Train Settings")
+	except Exception:
+		return defaults
+	return {
+		"gym_name": getattr(s, "gym_name", None) or defaults["gym_name"],
+		"default_currency": getattr(s, "default_currency", None) or defaults["default_currency"],
+		"default_weight_unit": getattr(s, "default_weight_unit", None) or defaults["default_weight_unit"],
+		"members_can_self_book": cint(getattr(s, "members_can_self_book", 1)),
+		"members_can_self_checkin": cint(getattr(s, "members_can_self_checkin", 1)),
+	}
 
 
 # ---------------------------------------------------------------------------
@@ -145,67 +295,75 @@ def _get_settings() -> dict:
 @frappe.whitelist()
 def boot():
 	"""Initial payload for the PWA: user, member profile, coach status, and gym settings."""
-	member_name = _get_or_create_member()
-	m = frappe.db.get_value(
-		"Member",
-		member_name,
-		[
-			"name",
-			"full_name",
-			"email",
-			"mobile_no",
-			"status",
-			"coach",
-			"locale",
-			"theme",
-			"avatar",
-			"goal",
-			"height_cm",
-			"weight_kg",
-			"join_date",
-		],
-		as_dict=True,
-	)
-	coach_name = _get_coach_for_user()
-	is_coach_user = _is_staff_or_coach()
+	user = frappe.session.user
+	member_name = _current_member()
+	coach_name = get_coach_for_user()
+
+	m = frappe._dict()
+	if member_name:
+		m = frappe.db.get_value(
+			"Member",
+			member_name,
+			[
+				"name",
+				"full_name",
+				"email",
+				"mobile_no",
+				"status",
+				"coach",
+				"locale",
+				"theme",
+				"avatar",
+				"goal",
+				"height_cm",
+				"weight_kg",
+				"join_date",
+			],
+			as_dict=True,
+		)
+	u = frappe.db.get_value("User", user, ["full_name", "email", "mobile_no", "user_image"], as_dict=True) or frappe._dict()
+
 	coach_info = None
 	if m.get("coach"):
-		c_doc = frappe.db.get_value(
-			"Coach", m.coach, ["name", "coach_name", "sport", "phone"], as_dict=True
-		)
-		if c_doc:
+		c = frappe.db.get_value("Coach", m.coach, ["name", "coach_name", "sport", "phone"], as_dict=True)
+		if c:
 			coach_info = {
-				"name": c_doc.name,
-				"full_name": c_doc.coach_name,
-				"specialty": c_doc.sport or "",
-				"phone": c_doc.phone or "",
+				"name": c.name,
+				"full_name": c.coach_name,
+				"specialty": c.sport or "",
+				"phone": c.phone or "",
 			}
 
+	# Staff without a Member record keep their PWA preferences as user defaults
+	locale = m.get("locale") or frappe.defaults.get_user_default("gotrain_locale", user) or "en"
+	theme = m.get("theme") or frappe.defaults.get_user_default("gotrain_theme", user) or "system"
+
 	return {
-		"user": frappe.session.user,
-		"name": m.name,
-		"full_name": m.full_name,
-		"email": m.email or frappe.session.user,
-		"mobile_no": m.mobile_no or "",
-		"avatar_url": m.avatar or "",
-		"status": m.status,
-		"locale": m.locale or "en",
-		"theme": m.theme or "system",
-		"goal": m.goal or "",
-		"height_cm": flt(m.height_cm) if m.height_cm else None,
-		"weight_kg": flt(m.weight_kg) if m.weight_kg else None,
+		"user": user,
+		"name": member_name or user,
+		"full_name": m.get("full_name") or u.full_name or user,
+		"email": m.get("email") or u.email or user,
+		"mobile_no": m.get("mobile_no") or u.mobile_no or "",
+		"avatar_url": m.get("avatar") or u.user_image or "",
+		"status": m.get("status") or "",
+		"locale": locale,
+		"theme": theme,
+		"goal": m.get("goal") or "",
+		"height_cm": flt(m.height_cm) if m.get("height_cm") else None,
+		"weight_kg": flt(m.weight_kg) if m.get("weight_kg") else None,
 		"coach": coach_info,
 		"coach_profile": coach_name,
-		"is_coach": bool(is_coach_user),
+		"is_coach": bool(coach_name) or is_manager(),
+		"has_member_profile": bool(member_name),
 		"role": "coach" if coach_name else "client",
-		"member": m,
+		"member": m or None,
 		"settings": _get_settings(),
 		"csrf_token": frappe.sessions.get_csrf_token(),
-		"version": getattr(frappe.get_attr("go_train"), "__version__", "0.2.0"),
+		"version": __version__,
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def update_profile(
 	locale=None,
 	theme=None,
@@ -216,22 +374,28 @@ def update_profile(
 	mobile_no=None,
 ):
 	"""Update the signed-in member's preferences and physical profile."""
-	member_name = _get_or_create_member()
+	member_name = _current_member()
 	updates = {}
 	if locale in ("en", "ar"):
 		updates["locale"] = locale
 	if theme in ("system", "light", "dark"):
 		updates["theme"] = theme
+
+	if not member_name:
+		for key, value in updates.items():
+			frappe.defaults.set_user_default(f"gotrain_{key}", value, frappe.session.user)
+		return boot()
+
 	if goal is not None:
-		updates["goal"] = goal
+		updates["goal"] = str(goal).strip()[:1000]
 	if height_cm is not None:
 		updates["height_cm"] = flt(height_cm) if str(height_cm).strip() != "" else 0
 	if weight_kg is not None:
 		updates["weight_kg"] = flt(weight_kg) if str(weight_kg).strip() != "" else 0
-	if full_name:
-		updates["full_name"] = full_name.strip()
+	if full_name and str(full_name).strip():
+		updates["full_name"] = str(full_name).strip()[:140]
 	if mobile_no is not None:
-		updates["mobile_no"] = mobile_no.strip()
+		updates["mobile_no"] = str(mobile_no).strip()[:40]
 
 	if updates:
 		frappe.db.set_value("Member", member_name, updates)
@@ -244,58 +408,61 @@ def update_profile(
 # ---------------------------------------------------------------------------
 
 
-def _member_program_ids(member: str) -> list[str]:
-	enrolled = frappe.get_all(
-		"Member Program",
-		filters={"member": member},
-		pluck="program",
+def _month_window(month: str | None):
+	"""(start, end) dates for a 'YYYY-MM' month padded by a week on each side;
+	without a month, the previous, current and next months."""
+	anchor = None
+	if month:
+		try:
+			anchor = getdate(f"{month}-01")
+		except Exception:
+			anchor = None
+	if anchor:
+		return add_days(get_first_day(anchor), -7), add_days(get_last_day(anchor), 7)
+	now = getdate(today())
+	return get_first_day(add_months(now, -1)), get_last_day(add_months(now, 1))
+
+
+def _latest_logs(member: str | None, workout_names: list[str], fields: list[str]) -> dict:
+	if not member or not workout_names:
+		return {}
+	logs = frappe.get_all(
+		"Workout Log",
+		filters={"member": member, "workout": ["in", workout_names]},
+		fields=["workout", *fields],
+		order_by="log_date desc, creation desc",
 	)
-	published = frappe.get_all(
-		"Training Program",
-		filters={"is_published": 1},
-		pluck="name",
+	latest = {}
+	for log in logs:
+		latest.setdefault(log.workout, log)
+	return latest
+
+
+def _window_workouts(member: str | None, month: str | None, fields: list[str]) -> list:
+	program_ids = accessible_program_ids(member)
+	if not program_ids:
+		return []
+	start, end = _month_window(month)
+	return frappe.get_all(
+		"Workout",
+		filters={"program": ["in", program_ids], "scheduled_date": ["between", [start, end]]},
+		fields=fields,
+		order_by="scheduled_date asc, day_index asc",
+		limit=500,
 	)
-	combined = list(dict.fromkeys([*(enrolled or []), *(published or [])]))
-	if combined:
-		return combined
-	return frappe.get_all("Training Program", pluck="name")
 
 
 @frappe.whitelist()
 def get_calendar(month: str | None = None):
-	"""Return scheduled workouts with the member's log status for the MonthCalendar."""
-	member = _get_or_create_member()
-	program_ids = _member_program_ids(member)
-	if not program_ids:
-		return []
-
-	workouts = frappe.get_all(
-		"Workout",
-		filters={"program": ["in", program_ids]},
-		fields=["name", "title", "letter", "scheduled_date", "program"],
-		order_by="scheduled_date asc",
-		limit=200,
-	)
-	if not workouts:
-		return []
-
-	workout_names = [w.name for w in workouts]
-	logs = frappe.get_all(
-		"Workout Log",
-		filters={"member": member, "workout": ["in", workout_names]},
-		fields=["workout", "status", "log_date"],
-		order_by="creation desc",
-	)
-	by_workout = {}
-	for l in logs:
-		by_workout.setdefault(l.workout, l)
+	"""Scheduled workouts in the requested month (padded) with the member's log status."""
+	member = _current_member()
+	workouts = _window_workouts(member, month, ["name", "title", "letter", "scheduled_date", "program"])
+	logs = _latest_logs(member, [w.name for w in workouts], ["status"])
 
 	events = []
 	for w in workouts:
-		if not w.scheduled_date:
-			continue
-		log = by_workout.get(w.name)
-		status = (log.status.lower() if log and log.status else "upcoming")
+		log = logs.get(w.name)
+		status = (log.status or "").lower() if log else "upcoming"
 		if status not in ("done", "missed"):
 			status = "upcoming"
 		events.append(
@@ -311,29 +478,43 @@ def get_calendar(month: str | None = None):
 	return events
 
 
+LOG_FIELDS = [
+	"name",
+	"status",
+	"result",
+	"details",
+	"rpe",
+	"duration_seconds",
+	"attachment",
+	"attachment_name",
+	"log_date",
+]
+
+
 @frappe.whitelist()
-def get_programs():
-	"""Programs assigned to the current member plus published programs, sorted with populated programs first."""
-	member = _get_or_create_member()
-	assigned = frappe.get_all(
-		"Member Program",
-		filters={"member": member},
-		fields=["name", "program", "is_active", "start_date"],
-		order_by="start_date desc",
+def get_feed(month: str | None = None):
+	"""Workouts across the member's programs for a month window, with program
+	names and the member's latest log. Replaces one request per program."""
+	member = _current_member()
+	workouts = _window_workouts(
+		member,
+		month,
+		["name", "title", "letter", "scheduled_date", "day_index", "summary", "body", "program"],
 	)
-	assigned_names = [a.program for a in assigned]
-	active_by_program = {a.program: bool(cint(a.is_active)) for a in assigned}
+	logs = _latest_logs(member, [w.name for w in workouts], LOG_FIELDS)
+	program_names = _name_map("Training Program", [w.program for w in workouts], "program_name")
+	for w in workouts:
+		log = logs.get(w.name)
+		if log:
+			log["attachment_url"] = log.get("attachment")
+		w["my_log"] = log
+		w["program_name"] = program_names.get(w.program, w.program)
+	return workouts
 
-	published_names = frappe.get_all(
-		"Training Program", filters={"is_published": 1}, pluck="name"
-	)
-	program_names = list(dict.fromkeys([*assigned_names, *published_names]))
-	if not program_names:
-		program_names = frappe.get_all("Training Program", pluck="name")
 
+def _program_rows(program_names: list[str], member: str | None) -> list:
 	if not program_names:
 		return []
-
 	programs = frappe.get_all(
 		"Training Program",
 		filters={"name": ["in", program_names]},
@@ -350,25 +531,46 @@ def get_programs():
 			"is_published",
 		],
 	)
+	enrollments = {}
+	if member:
+		for e in frappe.get_all(
+			"Member Program",
+			filters={"member": member, "program": ["in", program_names]},
+			fields=["program", "is_active", "payment_status"],
+		):
+			enrollments[e.program] = e
+
+	workout_counts = _group_count("Workout", "program", program_names)
+	client_counts = _group_count("Member Program", "program", program_names, "and is_active = 1")
+	done_counts = (
+		_group_count("Workout Log", "program", program_names, "and member = %(member)s and status = 'Done'", {"member": member})
+		if member
+		else {}
+	)
+	coach_names = _name_map("Coach", [p.coach for p in programs], "coach_name")
+
 	for p in programs:
-		is_act = active_by_program.get(p.name, True)
-		p["status"] = "Active" if is_act else "Ended"
-		p["is_active"] = is_act
-		p["workout_count"] = frappe.db.count("Workout", {"program": p.name})
-		p["done_count"] = frappe.db.count(
-			"Workout Log", {"member": member, "program": p.name, "status": "Done"}
-		)
-		p["client_count"] = frappe.db.count(
-			"Member Program", {"program": p.name, "is_active": 1}
-		)
-		if p.get("coach"):
-			p["coach_name"] = frappe.db.get_value("Coach", p.coach, "coach_name") or p.coach
+		e = enrollments.get(p.name)
+		if e and e.payment_status == "Pending":
+			status = "Pending"
+		elif e:
+			status = "Active" if cint(e.is_active) else "Ended"
+		else:
+			status = "Available"
+		p["status"] = status
+		p["is_enrolled"] = bool(e)
+		p["is_active"] = status in ("Active", "Available")
+		p["workout_count"] = workout_counts.get(p.name, 0)
+		p["done_count"] = done_counts.get(p.name, 0)
+		p["client_count"] = client_counts.get(p.name, 0)
+		if p.coach:
+			p["coach_name"] = coach_names.get(p.coach, p.coach)
 
 	programs.sort(
 		key=lambda x: (
-			1 if cint(x.get("workout_count")) > 0 else 0,
-			1 if x.get("is_active") else 0,
-			cint(x.get("workout_count")),
+			1 if x["workout_count"] > 0 else 0,
+			1 if x["status"] == "Active" else 0,
+			x["workout_count"],
 		),
 		reverse=True,
 	)
@@ -376,93 +578,81 @@ def get_programs():
 
 
 @frappe.whitelist()
+def get_programs():
+	"""Programs the member is enrolled in plus published programs, populated programs first."""
+	member = _current_member()
+	enrolled = frappe.get_all("Member Program", filters={"member": member}, pluck="program") if member else []
+	published = frappe.get_all("Training Program", filters={"is_published": 1}, pluck="name")
+	return _program_rows(list(dict.fromkeys([*enrolled, *published])), member)
+
+
+@frappe.whitelist()
 def get_program_workouts(program: str):
 	"""Workouts in a program with the current member's latest log status attached."""
-	member = _get_or_create_member()
+	_assert_program_viewable(program)
+	member = _current_member()
 	workouts = frappe.get_all(
 		"Workout",
 		filters={"program": program},
 		fields=["name", "title", "letter", "scheduled_date", "day_index", "summary", "body"],
 		order_by="scheduled_date desc, day_index asc",
 	)
-	if not workouts:
-		return []
-
-	logs = frappe.get_all(
-		"Workout Log",
-		filters={"member": member, "workout": ["in", [w.name for w in workouts]]},
-		fields=[
-			"name",
-			"workout",
-			"status",
-			"result",
-			"details",
-			"rpe",
-			"duration_seconds",
-			"attachment",
-			"attachment_name",
-			"log_date",
-		],
-		order_by="log_date desc, creation desc",
-	)
-	by_workout = {}
-	for l in logs:
-		l["attachment_url"] = l.get("attachment")
-		by_workout.setdefault(l.workout, l)
-
+	logs = _latest_logs(member, [w.name for w in workouts], LOG_FIELDS)
 	for w in workouts:
-		w["my_log"] = by_workout.get(w.name)
+		log = logs.get(w.name)
+		if log:
+			log["attachment_url"] = log.get("attachment")
+		w["my_log"] = log
 	return workouts
+
+
+def _comment_rows(raw_comments: list) -> list:
+	staff = _staff_users()
+	return [
+		{
+			"id": c.name,
+			"body": _comment_text(c.content),
+			"author": c.comment_by or c.comment_email or "Athlete",
+			"author_role": "coach" if c.comment_email in staff else "member",
+			"created_at": str(c.creation),
+		}
+		for c in raw_comments
+	]
 
 
 @frappe.whitelist()
 def get_workout(workout: str):
-	"""Full workout detail: prescribed text, exercise rows, member's logs, and comments."""
-	member = _get_or_create_member()
+	"""Full workout detail: prescribed text, exercise rows, member's logs (latest
+	with its set rows), and comments."""
+	_assert_workout_access(workout)
+	member = _current_member()
 	doc = frappe.get_doc("Workout", workout)
-	my_logs = frappe.get_all(
-		"Workout Log",
-		filters={"member": member, "workout": workout},
-		fields=[
-			"name",
-			"status",
-			"result",
-			"details",
-			"rpe",
-			"duration_seconds",
-			"attachment",
-			"attachment_name",
-			"log_date",
-		],
-		order_by="log_date desc, creation desc",
-	)
-	for l in my_logs:
-		l["attachment_url"] = l.get("attachment")
+
+	my_logs = []
+	if member:
+		my_logs = frappe.get_all(
+			"Workout Log",
+			filters={"member": member, "workout": workout},
+			fields=LOG_FIELDS,
+			order_by="log_date desc, creation desc",
+		)
+	for log in my_logs:
+		log["attachment_url"] = log.get("attachment")
+	if my_logs:
+		my_logs[0]["set_logs"] = frappe.get_all(
+			"Workout Set Log",
+			filters={"parent": my_logs[0].name, "parenttype": "Workout Log", "parentfield": "set_logs"},
+			fields=["exercise", "set_no", "weight", "reps", "completed", "note"],
+			order_by="idx asc",
+		)
 
 	raw_comments = frappe.get_all(
 		"Comment",
-		filters={
-			"reference_doctype": "Workout",
-			"reference_name": workout,
-			"comment_type": "Comment",
-		},
+		filters={"reference_doctype": "Workout", "reference_name": workout, "comment_type": "Comment"},
 		fields=["name", "content", "comment_by", "comment_email", "creation"],
 		order_by="creation asc",
 		limit=50,
 	)
-	comments = []
-	for c in raw_comments:
-		author_user = c.comment_email or ""
-		is_coach_author = _is_staff_or_coach(author_user) if author_user else False
-		comments.append(
-			{
-				"id": c.name,
-				"body": frappe.utils.strip_html_tags(c.content or "").strip(),
-				"author": c.comment_by or c.comment_email or "Athlete",
-				"author_role": "coach" if is_coach_author else "member",
-				"created_at": str(c.creation),
-			}
-		)
 
 	return {
 		"name": doc.name,
@@ -471,25 +661,109 @@ def get_workout(workout: str):
 		"program": doc.program,
 		"scheduled_date": doc.scheduled_date,
 		"body": doc.body,
-		"summary": getattr(doc, "summary", None),
+		"summary": doc.get("summary"),
 		"exercises": [
 			{
 				"exercise": r.exercise,
 				"sets": r.sets,
 				"reps": r.reps,
-				"weight": getattr(r, "target_load", None) or getattr(r, "weight", None),
-				"rest": getattr(r, "rest", None),
+				"weight": r.get("target_load"),
+				"rest": r.get("rest"),
 				"notes": r.notes,
 			}
 			for r in (doc.exercises or [])
 		],
 		"my_log": my_logs[0] if my_logs else None,
 		"logs": my_logs,
-		"comments": comments,
+		"comments": _comment_rows(raw_comments),
 	}
 
 
-@frappe.whitelist()
+def _parse_set_logs(set_logs) -> list | None:
+	"""Sanitize set rows from the client. None means "leave existing rows"."""
+	if set_logs is None:
+		return None
+	if isinstance(set_logs, str):
+		try:
+			set_logs = json.loads(set_logs) if set_logs.strip() else []
+		except Exception:
+			return None
+	if not isinstance(set_logs, list):
+		return None
+
+	rows = [s for s in set_logs[:MAX_SET_ROWS] if isinstance(s, dict)]
+	names = {s.get("exercise") for s in rows if s.get("exercise")}
+	valid = set(frappe.get_all("Exercise", filters={"name": ["in", list(names)]}, pluck="name")) if names else set()
+	return [
+		{
+			"exercise": s.get("exercise") if s.get("exercise") in valid else None,
+			"set_no": cint(s.get("set_no")) or i + 1,
+			"weight": flt(s.get("weight")),
+			"reps": cint(s.get("reps")),
+			"completed": 1 if cint(s.get("completed")) else 0,
+			"note": str(s.get("note") or "")[:140],
+		}
+		for i, s in enumerate(rows)
+	]
+
+
+def _claim_attachment(file_url: str, log_name: str):
+	"""Only allow files the user uploaded, and attach them to the log so the
+	coach (who can read the log) can open the private file."""
+	file_name = frappe.db.get_value("File", {"file_url": file_url, "owner": frappe.session.user}, "name")
+	if not file_name:
+		frappe.throw(_("Attachment not found. Please upload it again."))
+	frappe.db.set_value(
+		"File",
+		file_name,
+		{
+			"attached_to_doctype": "Workout Log",
+			"attached_to_name": log_name,
+			"attached_to_field": "attachment",
+		},
+	)
+
+
+def _sync_prs(log, member: str):
+	"""Record a Progress Entry only when a completed set beats the member's
+	previous best for that exercise. Entries are tied to the log, so re-saving
+	a log replaces its PRs instead of duplicating them."""
+	frappe.db.delete("Progress Entry", {"workout_log": log.name})
+
+	best = {}
+	for s in log.set_logs or []:
+		if s.exercise and cint(s.completed) and flt(s.weight) > 0:
+			best[s.exercise] = max(best.get(s.exercise, 0), flt(s.weight))
+	if not best:
+		return
+
+	unit = _get_settings()["default_weight_unit"]
+	previous = dict(
+		frappe.db.sql(
+			"""select metric, max(value) from `tabProgress Entry`
+			where member = %(member)s and unit = %(unit)s and metric in %(metrics)s
+			group by metric""",
+			{"member": member, "unit": unit, "metrics": tuple(best)},
+		)
+	)
+	for exercise, weight in best.items():
+		if exercise in previous and weight <= flt(previous[exercise]):
+			continue
+		frappe.get_doc(
+			{
+				"doctype": "Progress Entry",
+				"member": member,
+				"recorded_on": log.log_date,
+				"metric": exercise,
+				"value": weight,
+				"unit": unit,
+				"workout_log": log.name,
+				"notes": _("PR set in workout {0}").format(log.workout),
+			}
+		).insert(ignore_permissions=True)
+
+
+@frappe.whitelist(methods=["POST"])
 def log_workout(
 	workout: str,
 	status: str = "Done",
@@ -500,69 +774,56 @@ def log_workout(
 	attachment: str | None = None,
 	attachment_name: str | None = None,
 	set_logs: list | str | None = None,
+	client_time: str | None = None,
+	client_op_id: str | None = None,
 ):
-	"""Record or update a member's result for a workout."""
-	member = _get_or_create_member()
-	existing_name = frappe.db.get_value(
-		"Workout Log",
-		{"member": member, "workout": workout, "log_date": today()},
-		"name",
-	)
-	parsed_sets = []
-	if isinstance(set_logs, str) and set_logs.strip():
-		try:
-			parsed_sets = json.loads(set_logs)
-		except Exception:
-			parsed_sets = []
-	elif isinstance(set_logs, list):
-		parsed_sets = set_logs
+	"""Record or update a member's result for a workout (one log per day)."""
+	member = _require_member()
+	_assert_workout_access(workout)
 
+	status = (status or "Done").strip().title()
+	if status not in LOG_STATUSES:
+		frappe.throw(_("Invalid workout status"))
+	rpe = cint(rpe) or None
+	if rpe and not 1 <= rpe <= 10:
+		frappe.throw(_("RPE must be between 1 and 10"))
+
+	log_date = getdate(_client_datetime(client_time))
+	rows = _parse_set_logs(set_logs)
+
+	existing_name = frappe.db.get_value(
+		"Workout Log", {"member": member, "workout": workout, "log_date": log_date}, "name"
+	)
 	if existing_name:
 		doc = frappe.get_doc("Workout Log", existing_name)
-		doc.status = status
-		doc.result = result
-		doc.details = details
-		doc.rpe = cint(rpe) if rpe else None
-		doc.duration_seconds = cint(duration) if duration is not None else None
-		if attachment is not None:
-			doc.attachment = attachment
-		if attachment_name is not None:
-			doc.attachment_name = attachment_name
-		if parsed_sets:
-			doc.set("set_logs", parsed_sets)
-		doc.save(ignore_permissions=True)
 	else:
-		doc = frappe.get_doc(
-			{
-				"doctype": "Workout Log",
-				"member": member,
-				"workout": workout,
-				"log_date": today(),
-				"status": status,
-				"result": result,
-				"details": details,
-				"rpe": cint(rpe) if rpe else None,
-				"duration_seconds": cint(duration) if duration is not None else None,
-				"attachment": attachment,
-				"attachment_name": attachment_name,
-				"set_logs": parsed_sets,
-			}
-		).insert(ignore_permissions=True)
+		doc = frappe.new_doc("Workout Log")
+		doc.update({"member": member, "workout": workout, "log_date": log_date})
 
-	# Auto-record PR / Progress Entry for any completed set with weight > 0
-	for s in parsed_sets:
-		if s.get("exercise") and flt(s.get("weight")) > 0 and cint(s.get("completed", 1)):
-			frappe.get_doc(
-				{
-					"doctype": "Progress Entry",
-					"member": member,
-					"recorded_on": today(),
-					"metric": s.get("exercise"),
-					"value": flt(s.get("weight")),
-					"unit": _get_settings().get("default_weight_unit", "kg"),
-					"notes": f"Logged in workout {workout}",
-				}
-			).insert(ignore_permissions=True)
+	new_attachment = attachment and attachment != doc.attachment
+	doc.update(
+		{
+			"status": status,
+			"result": result,
+			"details": details,
+			"rpe": rpe,
+			"duration_seconds": cint(duration) if duration is not None else None,
+		}
+	)
+	if attachment is not None:
+		doc.attachment = attachment or None
+		doc.attachment_name = attachment_name if attachment else None
+	if rows is not None:
+		doc.set("set_logs", rows)
+
+	if doc.is_new():
+		doc.insert(ignore_permissions=True)
+	else:
+		doc.save(ignore_permissions=True)
+
+	if new_attachment:
+		_claim_attachment(attachment, doc.name)
+	_sync_prs(doc, member)
 
 	return {
 		"name": doc.name,
@@ -574,14 +835,14 @@ def log_workout(
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def add_workout_comment(workout: str, body: str):
 	"""Add a comment on a Workout (visible in both the PWA and ERPNext Desk)."""
-	if not (body or "").strip():
+	body = (body or "").strip()
+	if not body:
 		frappe.throw(_("Comment cannot be empty"))
-	member = _get_or_create_member()
-	full_name = frappe.db.get_value("Member", member, "full_name") or frappe.session.user
-	is_coach = _is_staff_or_coach()
+	_assert_workout_access(workout)
+	full_name = _display_name(_current_member())
 
 	c = frappe.get_doc(
 		{
@@ -591,15 +852,15 @@ def add_workout_comment(workout: str, body: str):
 			"reference_name": workout,
 			"comment_email": frappe.session.user,
 			"comment_by": full_name,
-			"content": body.strip(),
+			"content": frappe.utils.escape_html(body),
 		}
 	).insert(ignore_permissions=True)
 
 	return {
 		"id": c.name,
-		"body": body.strip(),
+		"body": body,
 		"author": full_name,
-		"author_role": "coach" if is_coach else "member",
+		"author_role": "coach" if is_staff() else "member",
 		"created_at": str(c.creation),
 	}
 
@@ -612,8 +873,10 @@ def add_workout_comment(workout: str, body: str):
 @frappe.whitelist()
 def get_history(q: str | None = None):
 	"""Notes-style search across workouts, prescribed text, and the member's logged results."""
-	member = _get_or_create_member()
-	logs = frappe.db.sql(
+	member = _current_member()
+	if not member:
+		return []
+	return frappe.db.sql(
 		"""
 		select
 			w.name, w.title, w.body, w.scheduled_date,
@@ -629,28 +892,28 @@ def get_history(q: str | None = None):
 		order by wl.log_date desc, wl.creation desc
 		limit 100
 		""",
-		{"member": member, "q": q or "", "like": f"%{q or ''}%"},
+		{"member": member, "q": (q or "").strip(), "like": _like(q)},
 		as_dict=True,
 	)
-	return logs
 
 
 @frappe.whitelist()
 def get_insights():
 	"""Completion ring + counts for the Track tab."""
-	member = _get_or_create_member()
+	member = _current_member()
+	if not member:
+		return {"done": 0, "missed": 0, "logged": 0, "completion": 0}
 	done = frappe.db.count("Workout Log", {"member": member, "status": "Done"})
 	missed = frappe.db.count("Workout Log", {"member": member, "status": "Missed"})
 	distinct_days = frappe.db.sql(
 		"select count(distinct log_date) from `tabWorkout Log` where member = %s",
 		(member,),
 	)
-	logged_days = cint(distinct_days[0][0]) if distinct_days else 0
 	total = done + missed
 	return {
 		"done": done,
 		"missed": missed,
-		"logged": logged_days,
+		"logged": cint(distinct_days[0][0]) if distinct_days else 0,
 		"completion": round((done / total) * 100) if total else 0,
 	}
 
@@ -658,7 +921,9 @@ def get_insights():
 @frappe.whitelist()
 def get_tracking():
 	"""Progress Entry time series grouped by metric for the Track tab."""
-	member = _get_or_create_member()
+	member = _current_member()
+	if not member:
+		return []
 	rows = frappe.get_all(
 		"Progress Entry",
 		filters={"member": member},
@@ -679,34 +944,62 @@ def get_tracking():
 	return list(grouped.values())
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def add_progress_entry(
 	metric: str,
 	value: float,
 	unit: str = "kg",
 	recorded_date: str | None = None,
 	notes: str | None = None,
+	client_time: str | None = None,
+	client_op_id: str | None = None,
 ):
 	"""Allow an athlete to record a new PR or body metric from the Track tab."""
-	member = _get_or_create_member()
-	metric_clean = (metric or "").strip()
+	member = _require_member()
+	metric_clean = (metric or "").strip()[:140]
 	if not metric_clean:
 		frappe.throw(_("Metric name is required"))
+
+	op_id = (client_op_id or "").strip()[:64] or None
+	if op_id:
+		existing = frappe.db.get_value(
+			"Progress Entry",
+			{"member": member, "client_op_id": op_id},
+			["name", "metric", "value", "unit", "recorded_on"],
+			as_dict=True,
+		)
+		if existing:
+			return {
+				"id": existing.name,
+				"metric": existing.metric,
+				"value": flt(existing.value),
+				"unit": existing.unit,
+				"date": str(existing.recorded_on),
+			}
+
+	recorded_on = getdate(_client_datetime(client_time))
+	if recorded_date:
+		try:
+			recorded_on = min(getdate(recorded_date), getdate(today()))
+		except Exception:
+			pass
+	unit_clean = (unit or "kg").strip()[:20] or "kg"
 
 	doc = frappe.get_doc(
 		{
 			"doctype": "Progress Entry",
 			"member": member,
-			"recorded_on": recorded_date or today(),
+			"recorded_on": recorded_on,
 			"metric": metric_clean,
 			"value": flt(value),
-			"unit": (unit or "kg").strip(),
+			"unit": unit_clean,
 			"notes": notes,
+			"client_op_id": op_id,
 		}
 	).insert(ignore_permissions=True)
 
 	# Keep Member.weight_kg in sync when logging Bodyweight
-	if metric_clean.lower() in ("bodyweight", "body weight", "weight") and (unit or "kg").lower() == "kg":
+	if metric_clean.lower() in ("bodyweight", "body weight", "weight") and unit_clean.lower() == "kg":
 		frappe.db.set_value("Member", member, "weight_kg", flt(value))
 
 	return {
@@ -734,13 +1027,10 @@ def get_exercises(q: str | None = None, sport: str | None = None, category: str 
 
 	or_filters = None
 	if q and q.strip():
-		term = f"%{q.strip()}%"
+		term = _like(q)
 		or_filters = [
-			["Exercise", "exercise_name", "like", term],
-			["Exercise", "category", "like", term],
-			["Exercise", "sport", "like", term],
-			["Exercise", "primary_muscle", "like", term],
-			["Exercise", "equipment", "like", term],
+			["Exercise", field, "like", term]
+			for field in ("exercise_name", "category", "sport", "primary_muscle", "equipment")
 		]
 
 	rows = frappe.get_all(
@@ -783,70 +1073,70 @@ def get_exercises(q: str | None = None, sport: str | None = None, category: str 
 @frappe.whitelist()
 def get_classes():
 	"""Upcoming class sessions with booking count, coach info, and the member's booking status."""
-	member = _get_or_create_member()
+	member = _current_member()
 	settings = _get_settings()
 	sessions = frappe.get_all(
 		"Class Session",
 		filters={"status": "Scheduled", "start_time": [">=", f"{today()} 00:00:00"]},
-		fields=[
-			"name",
-			"class_type",
-			"coach",
-			"facility",
-			"start_time",
-			"end_time",
-			"capacity",
-		],
+		fields=["name", "class_type", "coach", "facility", "start_time", "end_time", "capacity"],
 		order_by="start_time asc",
 		limit=50,
 	)
+	names = [s.name for s in sessions]
+	booked = _group_count("Class Booking", "session", names, "and status in ('Booked', 'Attended')")
+	mine = {}
+	if member and names:
+		for b in frappe.get_all(
+			"Class Booking",
+			filters={"session": ["in", names], "member": member, "status": ["!=", "Cancelled"]},
+			fields=["name", "status", "session"],
+		):
+			mine[b.session] = {"name": b.name, "status": b.status}
+	coach_names = _name_map("Coach", [s.coach for s in sessions], "coach_name")
+
 	for s in sessions:
-		s["id"] = s.name
-		s["title"] = s.class_type or s.name
 		start_str = str(s.start_time or "")
 		end_str = str(s.end_time or "")
+		s["id"] = s.name
+		s["title"] = s.class_type or s.name
 		s["session_date"] = start_str[:10] if len(start_str) >= 10 else today()
 		s["start_time"] = start_str[11:16] if len(start_str) >= 16 else start_str
 		s["end_time"] = end_str[11:16] if len(end_str) >= 16 else end_str
 		s["room"] = s.facility or ""
-
-		s["booked_count"] = frappe.db.count(
-			"Class Booking", {"session": s.name, "status": ["in", ["Booked", "Attended"]]}
-		)
+		s["booked_count"] = booked.get(s.name, 0)
 		s["spots_left"] = max(0, cint(s.capacity) - s["booked_count"]) if cint(s.capacity) else 99
-		booking = frappe.db.get_value(
-			"Class Booking",
-			{"session": s.name, "member": member, "status": ["!=", "Cancelled"]},
-			["name", "status"],
-			as_dict=True,
-		)
-		s["my_booking"] = booking
-		if s.get("coach"):
-			s["coach_name"] = frappe.db.get_value("Coach", s.coach, "coach_name") or s.coach
+		s["my_booking"] = mine.get(s.name)
+		if s.coach:
+			s["coach_name"] = coach_names.get(s.coach, s.coach)
 		s["color"] = "#F23D46"
 
 	checked_in_today = bool(
-		frappe.db.exists(
-			"Check In",
-			{"member": member, "check_in_time": [">=", f"{today()} 00:00:00"]},
+		member
+		and frappe.db.exists(
+			"Check In", {"member": member, "check_in_time": [">=", f"{today()} 00:00:00"]}
 		)
 	)
 	return {
 		"sessions": sessions,
 		"checked_in_today": checked_in_today,
-		"can_self_book": bool(settings.get("members_can_self_book", 1)),
-		"can_self_checkin": bool(settings.get("members_can_self_checkin", 1)),
+		"can_self_book": bool(settings["members_can_self_book"]),
+		"can_self_checkin": bool(settings["members_can_self_checkin"]),
 	}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def book_class(session: str):
-	"""Book the current member into a class session."""
-	settings = _get_settings()
-	if not settings.get("members_can_self_book", 1) and not _is_staff_or_coach():
+	"""Book the current member into a class session (capacity enforced by Class Booking)."""
+	if not _get_settings()["members_can_self_book"] and not is_staff():
 		frappe.throw(_("Self-booking is currently disabled by your gym."))
+	member = _require_member()
 
-	member = _get_or_create_member()
+	s = frappe.db.get_value("Class Session", session, ["status", "start_time"], as_dict=True)
+	if not s:
+		frappe.throw(_("Class not found"), frappe.DoesNotExistError)
+	if s.status != "Scheduled" or get_datetime(s.start_time) < now_datetime():
+		frappe.throw(_("This class is no longer open for booking."))
+
 	existing = frappe.db.get_value(
 		"Class Booking", {"session": session, "member": member}, ["name", "status"], as_dict=True
 	)
@@ -854,6 +1144,7 @@ def book_class(session: str):
 		if existing.status == "Cancelled":
 			doc = frappe.get_doc("Class Booking", existing.name)
 			doc.status = "Booked"
+			doc.booked_on = now_datetime()
 			doc.save(ignore_permissions=True)
 			return {"booking": doc.name, "status": doc.status}
 		return {"booking": existing.name, "status": existing.status}
@@ -870,41 +1161,48 @@ def book_class(session: str):
 	return {"booking": doc.name, "status": doc.status}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def cancel_booking(booking: str | None = None, session: str | None = None):
 	"""Cancel a member's class booking by booking ID or session ID."""
-	member = _get_or_create_member()
-	if not booking and session:
+	member = _current_member()
+	if not booking and session and member:
 		booking = frappe.db.get_value(
-			"Class Booking",
-			{"session": session, "member": member, "status": "Booked"},
-			"name",
+			"Class Booking", {"session": session, "member": member, "status": "Booked"}, "name"
 		)
 	if not booking:
 		frappe.throw(_("Booking not found"))
 
 	owner = frappe.db.get_value("Class Booking", booking, "member")
-	if owner != member and not _is_staff_or_coach():
+	if not owner or (owner != member and not is_staff()):
 		frappe.throw(_("Not your booking"), frappe.PermissionError)
 	frappe.db.set_value("Class Booking", booking, "status", "Cancelled")
 	return {"booking": booking, "status": "Cancelled"}
 
 
-@frappe.whitelist()
-def check_in(session: str | None = None, facility: str | None = None):
-	"""Self check-in from the PWA."""
+@frappe.whitelist(methods=["POST"])
+def check_in(session: str | None = None, facility: str | None = None, client_time: str | None = None, client_op_id: str | None = None):
+	"""Self check-in from the PWA. Idempotent per day (and per session)."""
 	settings = _get_settings()
-	if not settings.get("members_can_self_checkin", 1) and not _is_staff_or_coach():
+	if not settings["members_can_self_checkin"] and not is_staff():
 		frappe.throw(_("Self check-in is currently disabled by your gym."))
+	member = _require_member()
 
-	member = _get_or_create_member()
+	when = _client_datetime(client_time)
+	day = getdate(when)
+	filters = {"member": member, "check_in_time": ["between", [f"{day} 00:00:00", f"{day} 23:59:59"]]}
+	if session:
+		filters["session"] = session
+	existing = frappe.db.get_value("Check In", filters, ["name", "check_in_time"], as_dict=True)
+	if existing:
+		return {"check_in": existing.name, "check_in_time": str(existing.check_in_time), "already": True}
+
 	doc = frappe.get_doc(
 		{
 			"doctype": "Check In",
 			"member": member,
 			"session": session,
-			"facility": facility or settings.get("gym_name") or "Main Floor",
-			"check_in_time": now_datetime(),
+			"facility": (facility or settings["gym_name"] or "Main Floor")[:140],
+			"check_in_time": when,
 			"method": "App",
 		}
 	).insert(ignore_permissions=True)
@@ -916,80 +1214,82 @@ def check_in(session: str | None = None, facility: str | None = None):
 # ---------------------------------------------------------------------------
 
 
+def _last_member_comments(member_names: list[str]) -> dict:
+	if not member_names:
+		return {}
+	rows = frappe.db.sql(
+		"""
+		select c.reference_name, c.content, c.creation
+		from `tabComment` c
+		join (
+			select reference_name, max(creation) as last_creation
+			from `tabComment`
+			where reference_doctype = 'Member' and comment_type = 'Comment'
+			  and reference_name in %(names)s
+			group by reference_name
+		) latest on latest.reference_name = c.reference_name and latest.last_creation = c.creation
+		where c.reference_doctype = 'Member' and c.comment_type = 'Comment'
+		""",
+		{"names": tuple(member_names)},
+		as_dict=True,
+	)
+	return {r.reference_name: r for r in rows}
+
+
+def _assert_thread_access(thread: str):
+	if not _can_access_member(thread):
+		frappe.throw(_("Not authorized to view this conversation"), frappe.PermissionError)
+
+
 @frappe.whitelist()
 def get_threads():
-	"""Return direct message threads for the current user (Member or Coach)."""
-	member = _get_or_create_member()
-	coach_user = _get_coach_for_user()
-
-	if coach_user:
+	"""Direct message threads: a coach sees their clients, an athlete sees their coach."""
+	coach = get_coach_for_user()
+	if coach or is_manager():
 		clients = frappe.get_all(
 			"Member",
-			filters={"status": ["in", ["Active", "Paused"]]},
-			fields=["name", "full_name", "coach", "avatar"],
+			filters={"status": ["in", ["Active", "Paused"]], **_client_filters(coach)},
+			fields=["name", "full_name", "avatar", "user"],
 			order_by="modified desc",
 			limit=50,
 		)
+		clients = _without_staff(clients)
+		last = _last_member_comments([c.name for c in clients])
 		threads = []
 		for c in clients:
-			last_comment = frappe.get_all(
-				"Comment",
-				filters={
-					"reference_doctype": "Member",
-					"reference_name": c.name,
-					"comment_type": "Comment",
-				},
-				fields=["content", "creation"],
-				order_by="creation desc",
-				limit=1,
-			)
+			msg = last.get(c.name)
 			threads.append(
 				{
 					"id": c.name,
 					"other_name": c.full_name,
 					"avatar_url": c.avatar or "",
-					"last_message": frappe.utils.strip_html_tags(last_comment[0].content).strip()
-					if last_comment
-					else "Tap to message athlete",
-					"last_at": str(last_comment[0].creation) if last_comment else None,
+					"last_message": _comment_text(msg.content)
+					if msg
+					else _("Tap to message athlete"),
+					"last_at": str(msg.creation) if msg else None,
 				}
 			)
+		threads.sort(key=lambda t: t["last_at"] or "", reverse=True)
 		return threads
 
-	# Athlete sees a thread with their assigned Coach (or Head Coach / Gym Desk)
-	assigned_coach_id = frappe.db.get_value("Member", member, "coach")
-	coach_name = "Head Coach"
-	if assigned_coach_id:
-		c_name = frappe.db.get_value("Coach", assigned_coach_id, "coach_name")
-		if c_name:
-			coach_name = c_name
-	else:
-		first_coach = frappe.get_all(
-			"Coach", filters={"is_active": 1}, fields=["coach_name"], limit=1
-		)
-		if first_coach:
-			coach_name = first_coach[0].coach_name
+	member = _current_member()
+	if not member:
+		return []
+	assigned_coach = frappe.db.get_value("Member", member, "coach")
+	coach_name = _("Head Coach")
+	if assigned_coach:
+		coach_name = frappe.db.get_value("Coach", assigned_coach, "coach_name") or coach_name
 
-	last_comment = frappe.get_all(
-		"Comment",
-		filters={
-			"reference_doctype": "Member",
-			"reference_name": member,
-			"comment_type": "Comment",
-		},
-		fields=["content", "creation"],
-		order_by="creation desc",
-		limit=1,
-	)
+	msg = _last_member_comments([member]).get(member)
 	return [
 		{
 			"id": member,
 			"other_name": coach_name,
 			"avatar_url": "",
-			"last_message": frappe.utils.strip_html_tags(last_comment[0].content).strip()
-			if last_comment
-			else "Ask your coach about programming, weights, or recovery.",
-			"last_at": str(last_comment[0].creation) if last_comment else None,
+			"last_message": _comment_text(msg.content)
+			if msg
+			else _("Ask your coach about programming, weights, or recovery."),
+			"last_at": str(msg.creation) if msg else None,
 		}
 	]
 
@@ -997,45 +1297,35 @@ def get_threads():
 @frappe.whitelist()
 def get_thread_messages(thread: str):
 	"""Return messages in a Member<->Coach thread."""
-	member = _get_or_create_member()
-	if thread != member and not _is_staff_or_coach():
-		frappe.throw(_("Not authorized to view this conversation"), frappe.PermissionError)
-
+	_assert_thread_access(thread)
 	rows = frappe.get_all(
 		"Comment",
-		filters={
-			"reference_doctype": "Member",
-			"reference_name": thread,
-			"comment_type": "Comment",
-		},
+		filters={"reference_doctype": "Member", "reference_name": thread, "comment_type": "Comment"},
 		fields=["name", "content", "comment_email", "comment_by", "creation"],
 		order_by="creation asc",
 		limit=100,
 	)
-	messages = []
-	for r in rows:
-		messages.append(
-			{
-				"id": r.name,
-				"body": frappe.utils.strip_html_tags(r.content or "").strip(),
-				"author": r.comment_by or r.comment_email,
-				"mine": (r.comment_email == frappe.session.user),
-				"created_at": str(r.creation),
-			}
-		)
-	return messages
+	return [
+		{
+			"id": r.name,
+			"body": _comment_text(r.content),
+			"author": r.comment_by or r.comment_email,
+			"mine": r.comment_email == frappe.session.user,
+			"created_at": str(r.creation),
+		}
+		for r in rows
+	]
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def send_thread_message(thread: str, body: str):
 	"""Send a message in a Member<->Coach thread."""
-	if not (body or "").strip():
+	body = (body or "").strip()
+	if not body:
 		frappe.throw(_("Message cannot be empty"))
-	member = _get_or_create_member()
-	if thread != member and not _is_staff_or_coach():
-		frappe.throw(_("Not authorized to message this thread"), frappe.PermissionError)
+	_assert_thread_access(thread)
 
-	full_name = frappe.db.get_value("Member", member, "full_name") or frappe.session.user
+	full_name = _display_name(get_member_for_user())
 	doc = frappe.get_doc(
 		{
 			"doctype": "Comment",
@@ -1044,13 +1334,13 @@ def send_thread_message(thread: str, body: str):
 			"reference_name": thread,
 			"comment_email": frappe.session.user,
 			"comment_by": full_name,
-			"content": body.strip(),
+			"content": frappe.utils.escape_html(body),
 		}
 	).insert(ignore_permissions=True)
 
 	return {
 		"id": doc.name,
-		"body": body.strip(),
+		"body": body,
 		"author": full_name,
 		"mine": True,
 		"created_at": str(doc.creation),
@@ -1065,18 +1355,17 @@ def send_thread_message(thread: str, body: str):
 @frappe.whitelist()
 def get_notifications():
 	"""Combine Frappe Notification Log with live training & class alerts."""
-	member = _get_or_create_member()
+	member = _current_member()
 	items = []
 
 	if frappe.db.exists("DocType", "Notification Log"):
-		sys_logs = frappe.get_all(
+		for n in frappe.get_all(
 			"Notification Log",
 			filters={"for_user": frappe.session.user},
-			fields=["name", "subject", "email_content", "read", "creation", "type"],
+			fields=["name", "subject", "email_content", "read", "creation"],
 			order_by="creation desc",
 			limit=20,
-		)
-		for n in sys_logs:
+		):
 			items.append(
 				{
 					"id": n.name,
@@ -1088,23 +1377,33 @@ def get_notifications():
 				}
 			)
 
-	program_ids = _member_program_ids(member)
+	if not member:
+		return items
+
+	program_ids = accessible_program_ids(member)
 	if program_ids:
-		todays_workouts = frappe.get_all(
+		todays = frappe.get_all(
 			"Workout",
 			filters={"program": ["in", program_ids], "scheduled_date": today()},
-			fields=["name", "title", "program"],
+			fields=["name", "title"],
 			limit=5,
 		)
-		for w in todays_workouts:
-			logged = frappe.db.exists("Workout Log", {"member": member, "workout": w.name})
+		logged = set(
+			frappe.get_all(
+				"Workout Log",
+				filters={"member": member, "workout": ["in", [w.name for w in todays] or [""]]},
+				pluck="workout",
+			)
+		)
+		for w in todays:
+			done = w.name in logged
 			items.append(
 				{
 					"id": f"wod-{w.name}",
 					"kind": "workout",
-					"title": f"Today's Workout: {w.title}",
-					"body": "Completed and logged!" if logged else "Scheduled for today — tap Train to log your score.",
-					"read_at": today() if logged else None,
+					"title": _("Today's Workout: {0}").format(w.title),
+					"body": _("Completed and logged!") if done else _("Scheduled for today — tap Train to log your score."),
+					"read_at": today() if done else None,
 					"created_at": str(today()),
 				}
 			)
@@ -1116,20 +1415,23 @@ def get_notifications():
 		order_by="creation desc",
 		limit=5,
 	)
-	for b in bookings:
-		s = frappe.db.get_value(
+	sessions = {
+		s.name: s
+		for s in frappe.get_all(
 			"Class Session",
-			b.session,
-			["class_type", "start_time"],
-			as_dict=True,
+			filters={"name": ["in", [b.session for b in bookings] or [""]]},
+			fields=["name", "class_type", "start_time"],
 		)
+	}
+	for b in bookings:
+		s = sessions.get(b.session)
 		if s and str(s.start_time or "")[:10] >= str(today()):
 			items.append(
 				{
 					"id": f"cls-{b.name}",
 					"kind": "system",
-					"title": f"Class Booked: {s.class_type}",
-					"body": f"{str(s.start_time)[:16]}",
+					"title": _("Class Booked: {0}").format(s.class_type),
+					"body": str(s.start_time)[:16],
 					"read_at": str(b.creation),
 					"created_at": str(b.creation),
 				}
@@ -1138,7 +1440,7 @@ def get_notifications():
 	return items
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def mark_notifications_read():
 	if frappe.db.exists("DocType", "Notification Log"):
 		frappe.db.sql(
@@ -1148,79 +1450,52 @@ def mark_notifications_read():
 	return {"ok": True}
 
 
-@frappe.whitelist(methods=["POST"])
-def save_push_subscription(subscription=None, device_label: str | None = None):
-	"""Store a Web Push / FCM subscription for the signed-in user."""
-	member = _get_or_create_member()
-	payload = subscription
-	if isinstance(payload, str):
-		try:
-			payload = json.loads(payload)
-		except Exception:
-			payload = {"raw": payload}
-	key = f"gotrain:push:{frappe.session.user}"
-	frappe.cache.set_value(
-		key,
-		{
-			"member": member,
-			"user": frappe.session.user,
-			"device_label": device_label or "",
-			"subscription": payload,
-			"updated_at": str(now_datetime()),
-		},
-	)
-	return {"ok": True, "subscribed": True}
-
-
-@frappe.whitelist(methods=["POST"])
-def remove_push_subscription():
-	"""Remove the Web Push subscription for the signed-in user."""
-	key = f"gotrain:push:{frappe.session.user}"
-	frappe.cache.delete_value(key)
-	return {"ok": True, "subscribed": False}
-
-
 # ---------------------------------------------------------------------------
 # Marketplace & Promos & Gym Team
 # ---------------------------------------------------------------------------
 
 
+def _enrollment_status(e) -> str:
+	if e.payment_status == "Pending":
+		return "Pending"
+	return "Active" if cint(e.is_active) else "Ended"
+
+
 @frappe.whitelist()
 def get_marketplace():
-	"""Return published Training Programs available for enrollment in the Marketplace."""
-	settings = _get_settings()
-	default_curr = settings.get("default_currency") or "USD"
+	"""Published Training Programs, with the member's enrollment status on each."""
+	member = _current_member()
+	default_curr = _get_settings()["default_currency"]
 	programs = frappe.get_all(
 		"Training Program",
 		filters={"is_published": 1},
-		fields=[
-			"name",
-			"program_name",
-			"sport",
-			"coach",
-			"kind",
-			"summary",
-			"description",
-			"price",
-			"currency",
-		],
+		fields=["name", "program_name", "sport", "coach", "kind", "summary", "description", "price", "currency"],
 		order_by="creation desc",
 	)
+	coach_names = _name_map("Coach", [p.coach for p in programs], "coach_name")
+	enrollments = {}
+	if member:
+		for e in frappe.get_all(
+			"Member Program",
+			filters={"member": member},
+			fields=["program", "is_active", "payment_status"],
+		):
+			enrollments[e.program] = e
+
 	listings = []
 	for p in programs:
-		seller = "Go Train Coaching"
-		if p.coach:
-			seller = frappe.db.get_value("Coach", p.coach, "coach_name") or p.coach
+		e = enrollments.get(p.name)
 		listings.append(
 			{
 				"id": p.name,
 				"title": p.program_name,
 				"sport": p.sport or "",
 				"kind": p.kind or "Ongoing",
-				"seller_name": seller,
-				"price_cents": int(round(flt(p.price) * 100)),
+				"seller_name": coach_names.get(p.coach, p.coach) if p.coach else "Go Train Coaching",
+				"price_cents": round(flt(p.price) * 100),
 				"currency": p.currency or default_curr,
 				"summary": p.summary or p.description or f"{p.kind or 'Ongoing'} training block.",
+				"my_status": _enrollment_status(e) if e else None,
 			}
 		)
 	return listings
@@ -1228,33 +1503,37 @@ def get_marketplace():
 
 @frappe.whitelist()
 def get_marketplace_purchases():
-	"""Return programs the current member is enrolled in."""
-	member = _get_or_create_member()
-	settings = _get_settings()
-	default_curr = settings.get("default_currency") or "USD"
+	"""Programs the current member is enrolled in (or has requested)."""
+	member = _current_member()
+	if not member:
+		return []
+	default_curr = _get_settings()["default_currency"]
 	enrollments = frappe.get_all(
 		"Member Program",
 		filters={"member": member},
-		fields=["name", "program", "start_date", "is_active"],
+		fields=["name", "program", "start_date", "is_active", "payment_status"],
 		order_by="creation desc",
 	)
+	programs = {
+		p.name: p
+		for p in frappe.get_all(
+			"Training Program",
+			filters={"name": ["in", [e.program for e in enrollments] or [""]]},
+			fields=["name", "program_name", "price", "currency"],
+		)
+	}
 	out = []
 	for e in enrollments:
-		p = frappe.db.get_value(
-			"Training Program",
-			e.program,
-			["program_name", "price", "currency"],
-			as_dict=True,
-		)
+		p = programs.get(e.program)
 		if p:
 			out.append(
 				{
 					"id": e.name,
 					"program_id": e.program,
 					"title": p.program_name,
-					"price_cents": int(round(flt(p.price) * 100)),
+					"price_cents": round(flt(p.price) * 100),
 					"currency": p.currency or default_curr,
-					"status": "Active" if cint(e.is_active) else "Ended",
+					"status": _enrollment_status(e),
 					"start_date": str(e.start_date),
 				}
 			)
@@ -1263,129 +1542,151 @@ def get_marketplace_purchases():
 
 @frappe.whitelist()
 def get_marketplace_sales():
-	"""Return recent Member Program enrollments across coach programs."""
-	settings = _get_settings()
-	default_curr = settings.get("default_currency") or "USD"
-	enrollments = frappe.get_all(
-		"Member Program",
-		fields=["name", "member", "program", "start_date", "is_active"],
-		order_by="creation desc",
-		limit=50,
+	"""Recent enrollments in the coach's programs (all programs for managers)."""
+	coach = _require_coach()
+	default_curr = _get_settings()["default_currency"]
+	coach_cond = "" if is_manager() else "and tp.coach = %(coach)s"
+	rows = frappe.db.sql(
+		f"""
+		select mp.name, mp.payment_status, tp.program_name, tp.price, tp.currency, m.full_name
+		from `tabMember Program` mp
+		join `tabTraining Program` tp on tp.name = mp.program
+		left join `tabMember` m on m.name = mp.member
+		where 1 = 1 {coach_cond}
+		order by mp.creation desc
+		limit 50
+		""",
+		{"coach": coach},
+		as_dict=True,
 	)
-	sales = []
-	for e in enrollments:
-		p = frappe.db.get_value(
-			"Training Program",
-			e.program,
-			["program_name", "price", "currency"],
-			as_dict=True,
-		)
-		buyer = frappe.db.get_value("Member", e.member, "full_name") or e.member
-		if p:
-			sales.append(
-				{
-					"id": e.name,
-					"title": p.program_name,
-					"buyer_name": buyer,
-					"price_cents": int(round(flt(p.price) * 100)),
-					"currency": p.currency or default_curr,
-				}
-			)
-	return sales
-
-
-@frappe.whitelist()
-def buy_program(program: str):
-	"""Enroll the current member into a published Training Program."""
-	member = _get_or_create_member()
-	existing = frappe.db.get_value(
-		"Member Program",
-		{"member": member, "program": program},
-		"name",
-	)
-	if existing:
-		frappe.db.set_value("Member Program", existing, "is_active", 1)
-		return {"enrollment": existing, "status": "Active"}
-
-	doc = frappe.get_doc(
+	return [
 		{
-			"doctype": "Member Program",
+			"id": r.name,
+			"title": r.program_name,
+			"buyer_name": r.full_name or "",
+			"price_cents": round(flt(r.price) * 100),
+			"currency": r.currency or default_curr,
+			"status": r.payment_status or "Free",
+		}
+		for r in rows
+	]
+
+
+@frappe.whitelist(methods=["POST"])
+def buy_program(program: str):
+	"""Enroll in a published program. Free programs activate immediately; paid
+	ones create a Pending enrollment that staff activate once payment is taken."""
+	member = _require_member()
+	p = frappe.db.get_value("Training Program", program, ["is_published", "price"], as_dict=True)
+	if not p or not cint(p.is_published):
+		frappe.throw(_("This program is not available."))
+	paid = flt(p.price) > 0
+
+	name = frappe.db.get_value("Member Program", {"member": member, "program": program}, "name")
+	doc = frappe.get_doc("Member Program", name) if name else frappe.new_doc("Member Program")
+	if name and cint(doc.is_active):
+		return {"enrollment": doc.name, "status": "Active"}
+
+	doc.update(
+		{
 			"member": member,
 			"program": program,
 			"start_date": today(),
-			"is_active": 1,
+			"payment_status": "Pending" if paid else "Free",
+			"is_active": 0 if paid else 1,
 		}
-	).insert(ignore_permissions=True)
-	return {"enrollment": doc.name, "status": "Active"}
+	)
+	if doc.is_new():
+		doc.insert(ignore_permissions=True)
+	else:
+		doc.save(ignore_permissions=True)
+	return {"enrollment": doc.name, "status": "Pending" if paid else "Active"}
 
 
 @frappe.whitelist()
 def get_promos():
-	"""Return active gym promotions and member offers."""
-	settings = _get_settings()
-	gym_name = settings.get("gym_name") or "Go Train"
+	"""Active Gym Promo records within their validity window."""
+	if not frappe.db.exists("DocType", "Gym Promo"):
+		return []
+	now = getdate(today())
+	rows = frappe.get_all(
+		"Gym Promo",
+		filters={"is_active": 1},
+		fields=["name", "title", "description", "code", "percent_off", "valid_from", "valid_until"],
+		order_by="creation desc",
+	)
 	return [
 		{
-			"id": "promo-annual",
-			"percent_off": 20,
-			"title": f"{gym_name} Annual Athlete Pass",
-			"description": "Commit to 12 months of unlimited classes & custom programming and save 20%.",
-			"code": "GOTRAIN20",
-		},
-		{
-			"id": "promo-buddy",
-			"percent_off": 15,
-			"title": "Bring a Training Partner",
-			"description": "Refer a friend to join a strength or WOD track — both of you get 15% off next month.",
-			"code": "PARTNER15",
-		},
-		{
-			"id": "promo-oly",
-			"percent_off": 10,
-			"title": "Olympic Lifting Specialty Cycle",
-			"description": "8-week Snatch & Clean & Jerk cycle with video review from your coach.",
-			"code": "OLY10",
-		},
+			"id": r.name,
+			"title": r.title,
+			"description": r.description or "",
+			"code": r.code or "",
+			"percent_off": flt(r.percent_off),
+			"valid_until": str(r.valid_until) if r.valid_until else None,
+		}
+		for r in rows
+		if (not r.valid_from or getdate(r.valid_from) <= now)
+		and (not r.valid_until or getdate(r.valid_until) >= now)
 	]
+
+
+GYM_ROLES = [
+	{
+		"id": "gym-manager",
+		"name": "Gym Manager",
+		"can_manage_clients": True,
+		"can_manage_programs": True,
+		"can_manage_billing": True,
+	},
+	{
+		"id": "coach",
+		"name": "Coach",
+		"can_manage_clients": True,
+		"can_manage_programs": True,
+		"can_manage_billing": False,
+	},
+	{
+		"id": "front-desk",
+		"name": "Front Desk",
+		"can_manage_clients": True,
+		"can_manage_programs": False,
+		"can_manage_billing": True,
+	},
+]
 
 
 @frappe.whitelist()
 def get_gym_team():
-	"""Return the gym's team roster (Coaches, Members, Applicants, and Roles)."""
+	"""The gym's coaching team. Staff also see the member roster and join requests."""
 	settings = _get_settings()
-	coaches = frappe.get_all(
-		"Coach",
-		filters={"is_active": 1},
-		fields=["name", "coach_name", "sport", "phone"],
-		order_by="coach_name asc",
-	)
-	members = frappe.get_all(
-		"Member",
-		filters={"status": ["in", ["Active", "Paused"]]},
-		fields=["name", "full_name", "status", "coach"],
-		order_by="full_name asc",
-		limit=100,
-	)
-	applicants = frappe.get_all(
-		"Member",
-		filters={"status": "Applicant"},
-		fields=["name", "full_name", "join_date"],
-		order_by="creation desc",
-	)
-
-	roster = []
-	for c in coaches:
-		roster.append(
-			{
-				"id": f"coach-{c.name}",
-				"full_name": c.coach_name,
-				"team_role": f"Coach · {c.sport}" if c.sport else "Coach",
-				"user_role": "Coach",
-				"is_paying_client": False,
-			}
+	roster = [
+		{
+			"id": c.name,
+			"full_name": c.coach_name,
+			"team_role": f"Coach · {c.sport}" if c.sport else "Coach",
+			"user_role": "Coach",
+			"is_paying_client": False,
+		}
+		for c in frappe.get_all(
+			"Coach",
+			filters={"is_active": 1},
+			fields=["name", "coach_name", "sport"],
+			order_by="coach_name asc",
 		)
-	for m in members:
-		roster.append(
+	]
+	join_requests = []
+
+	if is_staff():
+		members = _without_staff(
+			frappe.get_all(
+				"Member",
+				filters={"status": ["in", ["Active", "Paused"]]},
+				fields=["name", "full_name", "status", "user"],
+				order_by="full_name asc",
+				limit=100,
+			)
+		)
+		roster += [
 			{
 				"id": m.name,
 				"full_name": m.full_name,
@@ -1393,35 +1694,24 @@ def get_gym_team():
 				"user_role": "Member",
 				"is_paying_client": m.status == "Active",
 			}
-		)
+			for m in members
+		]
+		join_requests = [
+			{"id": a.name, "full_name": a.full_name}
+			for a in frappe.get_all(
+				"Member",
+				filters={"status": "Applicant"},
+				fields=["name", "full_name"],
+				order_by="creation desc",
+				limit=50,
+			)
+		]
 
 	return {
-		"name": settings.get("gym_name") or "Go Train Gym",
+		"name": settings["gym_name"],
 		"members": roster,
-		"join_requests": [{"id": a.name, "full_name": a.full_name} for a in applicants],
-		"roles": [
-			{
-				"id": "gym-manager",
-				"name": "Gym Manager",
-				"can_manage_clients": True,
-				"can_manage_programs": True,
-				"can_manage_billing": True,
-			},
-			{
-				"id": "coach",
-				"name": "Coach",
-				"can_manage_clients": True,
-				"can_manage_programs": True,
-				"can_manage_billing": False,
-			},
-			{
-				"id": "front-desk",
-				"name": "Front Desk",
-				"can_manage_clients": True,
-				"can_manage_programs": False,
-				"can_manage_billing": True,
-			},
-		],
+		"join_requests": join_requests,
+		"roles": GYM_ROLES,
 	}
 
 
@@ -1432,76 +1722,72 @@ def get_gym_team():
 
 @frappe.whitelist()
 def get_coach_clients():
-	"""Return athletes managed by the coach (or all members for Gym Manager)."""
-	coach = _get_coach_for_user()
-	filters = {}
-	if coach and not ("Gym Manager" in frappe.get_roles() or "System Manager" in frappe.get_roles()):
-		filters["coach"] = coach
-
-	members = frappe.get_all(
-		"Member",
-		filters=filters,
-		fields=["name", "full_name", "status", "email", "avatar", "coach", "goal"],
-		order_by="modified desc",
-		limit=100,
-	)
-	if not members and filters:
-		members = frappe.get_all(
+	"""Athletes managed by the coach (all members for a Gym Manager)."""
+	coach = _require_coach()
+	members = _without_staff(
+		frappe.get_all(
 			"Member",
-			fields=["name", "full_name", "status", "email", "avatar", "coach", "goal"],
+			filters=_client_filters(coach),
+			fields=["name", "full_name", "status", "email", "avatar", "goal", "user"],
 			order_by="modified desc",
 			limit=100,
 		)
-
-	out = []
-	for m in members:
-		active_count = frappe.db.count(
-			"Member Program", {"member": m.name, "is_active": 1}
-		)
-		out.append(
-			{
-				"id": m.name,
-				"full_name": m.full_name,
-				"email": m.email or "",
-				"avatar_url": m.avatar or "",
-				"goal": m.goal or "",
-				"status": (m.status or "Active").lower(),
-				"active_programs": active_count,
-			}
-		)
-	return out
+	)
+	active = _group_count("Member Program", "member", [m.name for m in members], "and is_active = 1")
+	return [
+		{
+			"id": m.name,
+			"full_name": m.full_name,
+			"email": m.email or "",
+			"avatar_url": m.avatar or "",
+			"goal": m.goal or "",
+			"status": (m.status or "Active").lower(),
+			"active_programs": active.get(m.name, 0),
+		}
+		for m in members
+	]
 
 
 @frappe.whitelist()
+def get_coach_programs():
+	"""Programs the coach owns (every program for a Gym Manager)."""
+	coach = _require_coach()
+	filters = {} if is_manager() else {"coach": coach}
+	names = frappe.get_all("Training Program", filters=filters, pluck="name", order_by="modified desc")
+	return _program_rows(names, None)
+
+
+@frappe.whitelist(methods=["POST"])
 def create_coach_program(
 	name: str,
 	description: str | None = None,
 	sport: str | None = None,
 	kind: str = "Ongoing",
 	price: float = 0,
+	is_published: int = 0,
 ):
-	"""Create a new Training Program from the Coach PWA."""
+	"""Create a new Training Program owned by the signed-in coach."""
+	coach = _require_coach()
 	if not (name or "").strip():
 		frappe.throw(_("Program name is required"))
-	coach = _get_coach_for_user()
 	doc = frappe.get_doc(
 		{
 			"doctype": "Training Program",
-			"program_name": name.strip(),
+			"program_name": name.strip()[:140],
 			"description": description,
 			"summary": description,
 			"sport": sport if sport and frappe.db.exists("Sport", sport) else None,
 			"coach": coach,
 			"kind": kind if kind in ("Ongoing", "Fixed Weeks") else "Ongoing",
-			"is_published": 1,
-			"price": flt(price),
-			"currency": _get_settings().get("default_currency", "USD"),
+			"is_published": 1 if cint(is_published) else 0,
+			"price": max(0, flt(price)),
+			"currency": _get_settings()["default_currency"],
 		}
 	).insert(ignore_permissions=True)
 	return {"id": doc.name, "name": doc.program_name}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_coach_workout(
 	program: str,
 	title: str,
@@ -1510,16 +1796,21 @@ def create_coach_workout(
 	letter: str = "A",
 	coach_notes: str | None = None,
 ):
-	"""Create a new Workout inside a Training Program from the Coach PWA."""
+	"""Create a new Workout inside one of the coach's Training Programs."""
+	_assert_program_manageable(program)
 	if not (title or "").strip() or not (body or "").strip():
 		frappe.throw(_("Workout title and prescribed workout text are required"))
+	try:
+		scheduled = getdate(scheduled_date) if scheduled_date else getdate(today())
+	except Exception:
+		frappe.throw(_("Invalid scheduled date"))
 	doc = frappe.get_doc(
 		{
 			"doctype": "Workout",
 			"program": program,
-			"title": title.strip(),
+			"title": title.strip()[:140],
 			"letter": (letter or "A").strip()[:4],
-			"scheduled_date": scheduled_date or today(),
+			"scheduled_date": scheduled,
 			"body": body.strip(),
 			"summary": coach_notes,
 		}
@@ -1527,23 +1818,28 @@ def create_coach_workout(
 	return {"id": doc.name, "title": doc.title, "scheduled_on": str(doc.scheduled_date)}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def assign_member_program(member: str, program: str):
-	"""Assign a Training Program to a Member from the Coach PWA."""
-	existing = frappe.db.get_value(
-		"Member Program", {"member": member, "program": program}, "name"
-	)
-	if existing:
-		frappe.db.set_value("Member Program", existing, "is_active", 1)
-		return {"id": existing, "status": "Active"}
+	"""Assign a Training Program to one of the coach's athletes (complimentary)."""
+	coach = _require_coach()
+	if not frappe.db.exists("Member", member):
+		frappe.throw(_("Member not found"), frappe.DoesNotExistError)
+	if not is_manager() and frappe.db.get_value("Member", member, "coach") != coach:
+		frappe.throw(_("You can only assign programs to your own athletes"), frappe.PermissionError)
+	if not frappe.db.exists("Training Program", program):
+		frappe.throw(_("Program not found"), frappe.DoesNotExistError)
+	if not is_manager() and not cint(frappe.db.get_value("Training Program", program, "is_published")):
+		_assert_program_manageable(program)
 
-	doc = frappe.get_doc(
-		{
-			"doctype": "Member Program",
-			"member": member,
-			"program": program,
-			"start_date": today(),
-			"is_active": 1,
-		}
-	).insert(ignore_permissions=True)
+	name = frappe.db.get_value("Member Program", {"member": member, "program": program}, "name")
+	doc = frappe.get_doc("Member Program", name) if name else frappe.new_doc("Member Program")
+	doc.update({"member": member, "program": program, "is_active": 1})
+	if doc.is_new():
+		doc.start_date = today()
+	if doc.payment_status in (None, "", "Pending"):
+		doc.payment_status = "Free"
+	if doc.is_new():
+		doc.insert(ignore_permissions=True)
+	else:
+		doc.save(ignore_permissions=True)
 	return {"id": doc.name, "status": "Active"}

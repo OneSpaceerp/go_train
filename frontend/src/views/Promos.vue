@@ -23,7 +23,8 @@ onMounted(async () => {
         <div class="flex-1 min-w-0">
           <p class="font-semibold">{{ p.title }}</p>
           <p class="text-sm text-ink-soft">{{ p.description }}</p>
-          <span class="pill mt-2 text-brand-700 border-brand-200 bg-brand-50 font-mono tracking-wide">{{ p.code }}</span>
+          <span v-if="p.code" class="pill mt-2 text-brand-700 border-brand-200 bg-brand-50 font-mono tracking-wide">{{ p.code }}</span>
+          <p v-if="p.valid_until" class="text-xs text-ink-mute mt-1.5">Valid until {{ p.valid_until }}</p>
         </div>
       </div>
     </div>

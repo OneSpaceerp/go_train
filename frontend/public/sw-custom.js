@@ -1,6 +1,49 @@
 // Custom Service Worker capabilities for Go Train PWA (PWABuilder & Web Push / Notification / Sync)
 // Imported into the Workbox-generated sw.js via workbox.importScripts.
 
+// App shell for offline launch. /gotrain is rendered by Frappe (no-cache, with
+// the session's boot data), so navigations go network-first; the last good
+// response is kept under one key and served for any /gotrain/* deep link when
+// the network is unavailable. The SPA router then resolves the path.
+const SHELL_CACHE = 'gotrain-shell-v1'
+const SHELL_KEY = '/gotrain'
+const SHELL_TIMEOUT_MS = 4000
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(SHELL_CACHE).then((cache) => cache.add(SHELL_KEY)).catch(() => {}),
+  )
+})
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  if (request.mode !== 'navigate') return
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin || !/^\/gotrain(\/|$)/.test(url.pathname)) return
+
+  event.respondWith(
+    (async () => {
+      const cache = await caches.open(SHELL_CACHE)
+      const network = fetch(request).then((response) => {
+        if (response.ok && response.type === 'basic' && !response.redirected) {
+          cache.put(SHELL_KEY, response.clone()).catch(() => {})
+        }
+        return response
+      })
+      try {
+        return await Promise.race([
+          network,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), SHELL_TIMEOUT_MS)),
+        ])
+      } catch {
+        // Offline or slow network: serve the cached shell, else keep waiting
+        const cached = await cache.match(SHELL_KEY)
+        return cached || network.catch(() => Response.error())
+      }
+    })(),
+  )
+})
+
 self.addEventListener('message', (event) => {
   if (!event.data) return
   if (event.data.type === 'SKIP_WAITING') {

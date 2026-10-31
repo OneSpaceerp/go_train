@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import json
+
 import frappe
 
 no_cache = 1
@@ -20,12 +21,19 @@ def get_context(context):
 	context.no_cache = 1
 	context.show_sidebar = False
 	context.csrf_token = csrf_token
-	context.boot_json = json.dumps(
-		{
-			"user": user,
-			"full_name": full_name,
-			"csrf_token": csrf_token,
-			"site_name": frappe.local.site,
-		}
+	# Rendered inside <script type="application/json">: escape <, > and & so a
+	# value such as "</script>" in a user's name cannot break out of the tag.
+	context.boot_json = (
+		json.dumps(
+			{
+				"user": user,
+				"full_name": full_name,
+				"csrf_token": csrf_token,
+				"site_name": frappe.local.site,
+			}
+		)
+		.replace("<", "\\u003c")
+		.replace(">", "\\u003e")
+		.replace("&", "\\u0026")
 	)
 	return context
