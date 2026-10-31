@@ -8,6 +8,7 @@ import StatusPill from '../components/StatusPill.vue'
 import EmptyState from '../components/EmptyState.vue'
 import MonthCalendar from '../components/MonthCalendar.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import { onScreenReturn } from '../lib/useScreen.js'
 import { api } from '../lib/api.js'
 import { session } from '../lib/session.js'
 import { niceDate } from '../lib/format.js'
@@ -118,6 +119,7 @@ async function load() {
 }
 
 onMounted(load)
+onScreenReturn(load)
 
 async function quickCheckIn() {
   if (checkingIn.value || classInfo.value?.checked_in_today) return

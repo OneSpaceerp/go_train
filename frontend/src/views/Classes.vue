@@ -5,6 +5,8 @@ import Scaffold from '../components/Scaffold.vue'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import StatusPill from '../components/StatusPill.vue'
+import SegmentedControl from '../components/SegmentedControl.vue'
+import { onScreenReturn } from '../lib/useScreen.js'
 import { api } from '../lib/api.js'
 import { niceDate } from '../lib/format.js'
 import { haptics } from '../lib/haptics.js'
@@ -32,6 +34,7 @@ async function load() {
   }
 }
 onMounted(load)
+onScreenReturn(load)
 
 const filteredSessions = computed(() => {
   const list = data.value.sessions || []
@@ -136,27 +139,17 @@ function capacityPct(s) {
       </button>
     </div>
 
-    <!-- Filter Segment Pills -->
-    <div class="flex gap-2 mt-4 mb-3 overflow-x-auto no-scrollbar">
-      <button
-        v-for="tabOpt in [
-          { key: 'all', label: t('classes.filterAll') },
-          { key: 'today', label: t('classes.filterToday') },
-          { key: 'booked', label: t('classes.filterBooked') },
-        ]"
-        :key="tabOpt.key"
-        type="button"
-        class="min-h-[40px] px-4 rounded-full text-xs font-semibold border transition shrink-0"
-        :class="
-          filter === tabOpt.key
-            ? 'bg-ink text-surface border-ink shadow-sm'
-            : 'bg-surface border-line text-ink-soft'
-        "
-        @click="haptics.select(); filter = tabOpt.key"
-      >
-        {{ tabOpt.label }}
-      </button>
-    </div>
+    <!-- Filter -->
+    <SegmentedControl
+      v-model="filter"
+      class="mt-4 mb-3"
+      :label="t('train.classesTitle')"
+      :options="[
+        { value: 'all', label: t('classes.filterAll') },
+        { value: 'today', label: t('classes.filterToday') },
+        { value: 'booked', label: t('classes.filterBooked') },
+      ]"
+    />
 
     <p v-if="err" class="text-bad text-sm my-2 px-1 font-medium">{{ err }}</p>
 

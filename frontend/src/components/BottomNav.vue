@@ -1,81 +1,68 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+// Floating Liquid Glass tab bar (iOS 26 style; a navigation rail at ≥ 840px).
+// Tabs navigate between sections and keep each section's stack (lib/nav.js):
+// tap another tab → its last screen; tap the active tab → pop to its root,
+// then scroll to top. A lens slides to the selected tab.
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import Icon from './Icon.vue'
-import { isCoach } from '../lib/session.js'
-import { unreadNotifications } from '../lib/pwa.js'
+import { tabs, currentTab, goTab } from '../lib/nav.js'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
 
-const route = useRoute()
-const tabs = computed(() =>
-  isCoach()
-    ? [
-        { to: '/coach', tab: 'clients', label: t('tab.clients'), icon: 'clients' },
-        { to: '/coach/programs', tab: 'programs', label: t('tab.programs'), icon: 'programs' },
-        { to: '/messages', tab: 'messages', label: t('tab.messages'), icon: 'message' },
-        { to: '/profile', tab: 'profile', label: t('tab.profile'), icon: 'profile', badge: unreadNotifications.value },
-      ]
-    : [
-        { to: '/', tab: 'train', label: t('tab.train'), icon: 'train' },
-        { to: '/classes', tab: 'classes', label: t('tab.classes'), icon: 'calendar' },
-        { to: '/track', tab: 'track', label: t('tab.track'), icon: 'track' },
-        { to: '/messages', tab: 'messages', label: t('tab.messages'), icon: 'message' },
-        { to: '/profile', tab: 'profile', label: t('tab.profile'), icon: 'profile', badge: unreadNotifications.value },
-      ],
-)
-const active = (item) => route.meta.tab === item.tab
+const router = useRouter()
+const activeIndex = computed(() => Math.max(0, tabs.value.findIndex((item) => item.tab === currentTab.value)))
 
-function onTabClick(item) {
-  haptics.select()
-  if (active(item) && window.scrollY > 12) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+// Re-trigger the icon "squish" each time a tab becomes active
+const bounce = ref(0)
+watch(currentTab, () => bounce.value++)
+
+function onTab(item) {
+  const result = goTab(router, item.tab)
+  if (result === 'switch' || result === 'pop-to-root') haptics.select()
+}
+
+// Warm the destination's code chunk on touch-down so the switch is instant
+function prefetch(item) {
+  for (const match of router.resolve(item.root).matched) {
+    const loader = match.components?.default
+    if (typeof loader === 'function') loader()
   }
 }
 </script>
 
 <template>
-  <nav
-    class="bottom-nav-dock fixed inset-x-0 bottom-0 z-30 pointer-events-none px-3 pt-1 transition-all duration-200"
-    style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));"
-    aria-label="Primary Navigation"
-  >
-    <div
-      class="pointer-events-auto mx-auto max-w-[34rem] glass-dock rounded-[1.75rem] border px-1.5 py-1 grid"
-      :class="tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'"
-    >
-      <RouterLink
+  <nav class="tabbar bottom-nav-dock" :aria-label="t('nav.primary')">
+    <div class="tabbar-capsule glass-dock" :style="{ '--tabs': tabs.length, '--active': activeIndex }">
+      <span class="tabbar-lens" aria-hidden="true"></span>
+      <a
         v-for="item in tabs"
         :key="item.tab"
-        :to="item.to"
-        class="relative flex flex-col items-center justify-center min-h-[50px] py-1 px-1 rounded-[1.35rem] transition duration-150 active:scale-95 select-none"
-        :class="
-          active(item)
-            ? 'text-brand-600 bg-brand-500/10'
-            : 'text-ink-soft hover:text-ink'
-        "
-        @click="onTabClick(item)"
+        :href="`/gotrain${item.root === '/' ? '' : item.root}`"
+        class="tabbar-item"
+        :class="{ 'is-active': item.tab === currentTab }"
+        :aria-current="item.tab === currentTab ? 'page' : undefined"
+        @pointerdown="prefetch(item)"
+        @click.prevent="onTab(item)"
       >
-        <div class="relative">
+        <span class="relative">
           <Icon
+            :key="item.tab === currentTab ? `on-${bounce}` : 'off'"
             :name="item.icon"
-            :size="22"
-            :style="active(item) ? 'stroke-width: 2.35' : 'stroke-width: 1.9'"
+            :size="24"
+            :filled="item.tab === currentTab"
+            :class="item.tab === currentTab ? 'tabbar-icon-pop' : ''"
           />
           <span
             v-if="item.badge > 0"
-            class="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-bad text-white text-[0.625rem] font-bold grid place-items-center"
+            class="tabbar-badge"
+            :aria-label="t('nav.unread', { n: item.badge })"
           >
             {{ item.badge > 9 ? '9+' : item.badge }}
           </span>
-        </div>
-        <span
-          class="text-[0.6875rem] leading-tight mt-0.5 truncate max-w-full"
-          :class="active(item) ? 'font-bold text-brand-600' : 'font-medium text-ink-soft'"
-        >
-          {{ item.label }}
         </span>
-      </RouterLink>
+        <span class="tabbar-label">{{ item.label }}</span>
+      </a>
     </div>
   </nav>
 </template>

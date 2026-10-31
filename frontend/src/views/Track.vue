@@ -5,6 +5,7 @@ import Scaffold from '../components/Scaffold.vue'
 import Icon from '../components/Icon.vue'
 import EmptyState from '../components/EmptyState.vue'
 import BottomSheet from '../components/BottomSheet.vue'
+import { onScreenReturn } from '../lib/useScreen.js'
 import { api } from '../lib/api.js'
 import { shortDate } from '../lib/format.js'
 import { haptics } from '../lib/haptics.js'
@@ -43,6 +44,7 @@ onMounted(async () => {
   }
   await load()
 })
+onScreenReturn(load)
 
 function openAdd(prefill = '') {
   haptics.tap()

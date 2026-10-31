@@ -33,7 +33,7 @@ const suggestions = ['Back Squat', 'Deadlift', 'Fran', 'kg', 'Rx']
 
 <template>
   <Scaffold :title="t('train.historyTitle')" back :onRefresh="run">
-    <div class="py-3 sticky top-[56px] z-20 bg-surface-page">
+    <div class="py-3 sticky top-[calc(52px+env(safe-area-inset-top))] z-20 bg-surface-page">
       <label class="field flex items-center gap-2">
         <Icon name="search" :size="20" class="text-ink-mute" />
         <input

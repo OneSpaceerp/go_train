@@ -6,9 +6,11 @@ import { api, flushQueue } from './lib/api.js'
 import { dismissSplash } from './lib/splash.js'
 import { registerPwaServiceWorker, initVisualViewportKeyboard } from './lib/pwa.js'
 import { initStoragePersistence } from './lib/permissions.js'
+import { applyPlatformAttributes } from './lib/platform.js'
 import './style.css'
 
 async function start() {
+  applyPlatformAttributes()
   initVisualViewportKeyboard()
 
   let user = null

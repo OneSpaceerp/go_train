@@ -9,12 +9,35 @@ function prefersReducedMotion() {
   }
 }
 
+// iOS Safari has no Vibration API. Toggling a hidden `<input type="checkbox"
+// switch>` through its label plays the system selection haptic on iOS 18+.
+// Unofficial: it only works inside a user gesture and is a no-op elsewhere.
+let iosSwitch = null
+function iosTick() {
+  try {
+    if (!iosSwitch) {
+      const label = document.createElement('label')
+      label.setAttribute('aria-hidden', 'true')
+      label.style.cssText = 'position:fixed;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;inset:0 auto auto 0'
+      const input = document.createElement('input')
+      input.type = 'checkbox'
+      input.setAttribute('switch', '')
+      input.tabIndex = -1
+      label.appendChild(input)
+      document.body.appendChild(label)
+      iosSwitch = label
+    }
+    iosSwitch.click()
+  } catch {}
+}
+
+const canVibrate = () => typeof navigator !== 'undefined' && 'vibrate' in navigator
+
 function vibrate(pattern) {
   if (prefersReducedMotion()) return
   try {
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate(pattern)
-    }
+    if (canVibrate()) navigator.vibrate(pattern)
+    else if (typeof document !== 'undefined' && document.documentElement.dataset.os === 'ios') iosTick()
   } catch {}
 }
 

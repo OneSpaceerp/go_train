@@ -15,7 +15,8 @@ colors:
   status-done: "#17795A"
   status-missed: "#D12A41"
 typography:
-  family: "Poppins, Cairo, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+  body: "system-ui, -apple-system, Segoe UI, Roboto, Cairo, sans-serif"
+  display: "Poppins, Cairo, system-ui, sans-serif"
 rounded:
   field: "0.875rem"
   card: "1.5rem"
@@ -47,9 +48,10 @@ A quiet mist-and-paper world with **one** confident action colour.
 
 ## Typography
 
-Poppins (Cairo for Arabic), three weights (400/500/600), no display face. Sizes
-in rem; inputs never below 16px so iOS doesn't zoom. Arabic mirrors fully (RTL,
-1.6 line-height).
+Body and controls use the **system font** (SF on Apple, Roboto on Android): it
+is instant, works offline and matches the OS. **Poppins** is the display face
+(Cairo in Arabic) for large titles and headline numbers. Sizes in rem; inputs
+never below 16px so iOS doesn't zoom. Arabic mirrors fully (RTL, 1.6 line-height).
 
 ## Shape & depth
 
@@ -59,9 +61,46 @@ reference; dark follows the system (no in-app switch).
 
 ## Layout
 
-A single phone-width column on a mist page; white cards; a floating bottom tab
-bar (Train · Track · Messages · Profile); one bottom sheet at a time. Safe-area
-insets honoured; the tab bar and floating buttons slide away with the keyboard.
+A single phone-width column on a mist page; white cards; one bottom sheet at a
+time. Safe-area insets honoured; the tab bar slides away with the keyboard.
+
+## Navigation
+
+- **Tab bar:** a floating Liquid Glass capsule. Athletes get Train · Classes ·
+  Track · Messages · Profile; coaches get Clients · Programs · Messages · Profile.
+  A coral lens slides to the active tab, and the active icon fills. At ≥ 840px
+  it becomes a left navigation rail. It stays visible on pushed screens and
+  hides only for focused flows (chat) and sheets.
+- **Stacks per tab** (`lib/nav.js`): each tab remembers its own screen.
+  - Tapping another tab returns to where you left it.
+  - Tapping the active tab pops to its root, then scrolls to top.
+  - Tab roots stay mounted (`KeepAlive`) and refresh quietly when shown again.
+- **Bars:** tab roots show an iOS large title that collapses into the bar on
+  scroll. Pushed screens get a compact title and a back button naming the
+  previous screen (iOS) or an arrow (Android). Bars are transparent at the top
+  and turn to glass once content scrolls under them.
+- **Gestures** (`components/Scaffold.vue`):
+  - Edge-swipe back follows the finger and commits on distance or a flick.
+  - Swiping across a tab root moves to the neighbouring tab. It's a shortcut
+    to the tab bar, never started at screen edges, in horizontal scrollers or
+    in form fields.
+  - Pull-to-refresh on feeds.
+  - Sheets drag down to dismiss.
+  - Back (gesture, Android button, Esc) always closes the top layer first.
+
+## Motion
+
+Screen changes run through the View Transitions API (`router.js` + `style.css`):
+
+- **Push:** the new screen slides in over the old one, which parallaxes back 28%.
+- **Pop:** the reverse.
+- **Tab tap:** a quick fade-through.
+- **Tab swipe:** pager movement in the finger's direction.
+
+The tab bar never moves, and the navigation bar crossfades. Timing is 340ms on
+Apple's curve `cubic-bezier(0.32, 0.72, 0, 1)`. Only transform and opacity
+animate. Reduced motion turns every transition into a cut. Browsers without
+View Transitions also get a cut.
 
 ## Launch
 
@@ -74,3 +113,4 @@ icon rises into focus over a dot grid, the name slides up, then the app fades in
 - **Tap means coral.** Coral only on things that respond to a tap; values are ink.
 - **Red is final.** Missed/failed only — never "pending" or emphasis.
 - **One column, one sheet, one primary action** per screen.
+- **Back closes one layer.** A sheet, then the screen, then the tab's stack.
