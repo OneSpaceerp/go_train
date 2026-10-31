@@ -76,11 +76,15 @@ router.beforeEach((to, from) => {
   return true
 })
 
+// Directions that animate. Tapping a tab swaps the content instantly, as
+// native tab bars do; only pushes, pops and swipes move.
+const ANIMATED = new Set(['forward', 'backward', 'swipe-back', 'swipe-left', 'swipe-right'])
+
 function canAnimate(direction) {
   return (
     typeof document !== 'undefined' &&
     typeof document.startViewTransition === 'function' &&
-    direction !== 'none' &&
+    ANIMATED.has(direction) &&
     document.visibilityState === 'visible' &&
     !prefersReducedMotion()
   )
@@ -124,9 +128,34 @@ router.afterEach((to, _from, failure) => {
   })
 })
 
-router.onError(() => {
+// After a deploy, a running app still references the previous build's
+// screen files, which no longer exist on the server; opening a screen it
+// hasn't loaded yet fails. Reload once, straight to that screen, to pick up
+// the new build. The session flag prevents a reload loop.
+const CHUNK_RELOAD_KEY = 'gt-chunk-reload'
+const isChunkLoadError = (error) =>
+  /dynamically imported module|Importing a module script failed|error loading dynamically imported module|Failed to fetch|ChunkLoadError/i.test(
+    String(error?.message || error),
+  )
+
+router.onError((error, to) => {
   finishTransition?.()
   finishTransition = null
+  if (!isChunkLoadError(error) || typeof window === 'undefined') return
+  let alreadyTried = false
+  try {
+    alreadyTried = sessionStorage.getItem(CHUNK_RELOAD_KEY) === to.fullPath
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, to.fullPath)
+  } catch {}
+  if (!alreadyTried) window.location.assign(router.resolve(to).href)
+})
+
+router.afterEach((_to, _from, failure) => {
+  if (!failure) {
+    try {
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY)
+    } catch {}
+  }
 })
 
 // Move focus to the new screen's title for keyboard and screen-reader users,

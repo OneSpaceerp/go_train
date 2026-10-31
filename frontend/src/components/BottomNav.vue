@@ -26,7 +26,8 @@ function onTab(item) {
 function prefetch(item) {
   for (const match of router.resolve(item.root).matched) {
     const loader = match.components?.default
-    if (typeof loader === 'function') loader()
+    // A failed prefetch is harmless: the navigation itself recovers (router.js)
+    if (typeof loader === 'function') loader()?.catch?.(() => {})
   }
 }
 </script>

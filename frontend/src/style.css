@@ -597,12 +597,7 @@ html[data-nav='backward']::view-transition-new(root) { animation: 340ms var(--ea
 html[data-nav='swipe-back']::view-transition-old(root) { animation: 160ms ease both vt-fade-out; z-index: 2; }
 html[data-nav='swipe-back']::view-transition-new(root) { animation: 300ms var(--ease-ios) both vt-from-start; z-index: 1; }
 
-/* Tab switch by tap: a quick fade-through (iOS switches tabs without sliding) */
-html[data-nav='tab']::view-transition-old(root) { animation: 110ms ease-out both vt-fade-out; }
-html[data-nav='tab']::view-transition-new(root) { animation: 190ms 40ms ease-out both vt-fade-in; }
-html[data-nav='tab']::view-transition-group(appbar) { animation-duration: 0s; }
-html[data-nav='tab']::view-transition-old(appbar) { animation: 110ms ease-out both vt-fade-out; }
-html[data-nav='tab']::view-transition-new(appbar) { animation: 190ms 40ms ease-out both vt-fade-in; }
+/* Tab switch by tap: no transition — the content swaps in one frame (router.js) */
 
 /* Tab switch by swipe: pager movement in the finger's direction */
 html[data-nav='swipe-left']::view-transition-old(root) { animation: 300ms var(--ease-ios) both vt-to-left; }
