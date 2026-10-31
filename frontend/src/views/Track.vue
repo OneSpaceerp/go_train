@@ -120,7 +120,7 @@ const quickMetrics = [
     <template #actions>
       <button
         type="button"
-        class="btn-soft !min-h-[40px] !px-3.5 mr-1 text-xs"
+        class="btn-soft !min-h-[44px] !px-3.5 mr-1 text-sm"
         @click="openAdd()"
       >
         <Icon name="plus" :size="16" />
@@ -286,7 +286,7 @@ const quickMetrics = [
               v-for="qm in quickMetrics"
               :key="qm"
               type="button"
-              class="min-h-[38px] px-3 rounded-full text-xs font-semibold transition"
+              class="min-h-[44px] px-3 rounded-full text-xs font-semibold transition"
               :class="
                 metric === qm
                   ? 'bg-brand-650 text-white'

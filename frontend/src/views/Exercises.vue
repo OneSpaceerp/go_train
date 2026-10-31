@@ -56,7 +56,7 @@ function logPrFor(ex) {
         <button
           v-if="q"
           type="button"
-          class="icon-btn !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
+          class="icon-btn"
           aria-label="Clear search"
           @click="q = ''"
         >
@@ -69,7 +69,7 @@ function logPrFor(ex) {
           v-for="cat in CATEGORIES"
           :key="cat || 'all'"
           type="button"
-          class="min-h-[38px] px-3.5 rounded-full text-xs font-semibold border transition shrink-0"
+          class="min-h-[44px] px-3.5 rounded-full text-xs font-semibold border transition shrink-0"
           :class="
             category === cat
               ? 'bg-ink text-surface border-ink'

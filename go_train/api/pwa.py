@@ -11,6 +11,8 @@ the explicit ownership / role checks in this module.
 import html
 import json
 import os
+import re
+from urllib.parse import urlparse
 
 import frappe
 from frappe import _
@@ -639,12 +641,30 @@ def get_workout(workout: str):
 	for log in my_logs:
 		log["attachment_url"] = log.get("attachment")
 	if my_logs:
+		latest = my_logs[0].name
 		my_logs[0]["set_logs"] = frappe.get_all(
 			"Workout Set Log",
-			filters={"parent": my_logs[0].name, "parenttype": "Workout Log", "parentfield": "set_logs"},
+			filters={"parent": latest, "parenttype": "Workout Log", "parentfield": "set_logs"},
 			fields=["exercise", "set_no", "weight", "reps", "completed", "note"],
 			order_by="idx asc",
 		)
+		my_logs[0]["movement_media"] = frappe.get_all(
+			"Workout Movement Media",
+			filters={"parent": latest, "parenttype": "Workout Log", "parentfield": "movement_media"},
+			fields=["exercise", "media", "video_url", "note"],
+			order_by="idx asc",
+		)
+
+	# The movement library's own demo links, shown when the coach set none
+	library_videos = {
+		r.name: r.video_url
+		for r in frappe.get_all(
+			"Exercise",
+			filters={"name": ["in", [r.exercise for r in doc.exercises or [] if r.exercise] or [""]]},
+			fields=["name", "video_url"],
+		)
+		if r.video_url
+	}
 
 	raw_comments = frappe.get_all(
 		"Comment",
@@ -664,15 +684,22 @@ def get_workout(workout: str):
 		"summary": doc.get("summary"),
 		"exercises": [
 			{
+				"row": r.name,
 				"exercise": r.exercise,
+				"label": r.get("label"),
 				"sets": r.sets,
 				"reps": r.reps,
 				"weight": r.get("target_load"),
 				"rest": r.get("rest"),
+				"tempo": r.get("tempo"),
 				"notes": r.notes,
+				"media": r.get("media"),
+				"video_url": r.get("video_url"),
+				"library_video_url": library_videos.get(r.exercise),
 			}
 			for r in (doc.exercises or [])
 		],
+		"can_edit": _can_manage_program(doc.program),
 		"my_log": my_logs[0] if my_logs else None,
 		"logs": my_logs,
 		"comments": _comment_rows(raw_comments),
@@ -707,21 +734,72 @@ def _parse_set_logs(set_logs) -> list | None:
 	]
 
 
-def _claim_attachment(file_url: str, log_name: str):
-	"""Only allow files the user uploaded, and attach them to the log so the
-	coach (who can read the log) can open the private file."""
+def _claim_file(file_url: str, doctype: str, name: str, field: str):
+	"""Only allow files the user uploaded, and attach them to the document so
+	everyone who can read it (the coach for a log, athletes for a workout) can
+	open the private file."""
 	file_name = frappe.db.get_value("File", {"file_url": file_url, "owner": frappe.session.user}, "name")
 	if not file_name:
 		frappe.throw(_("Attachment not found. Please upload it again."))
 	frappe.db.set_value(
 		"File",
 		file_name,
-		{
-			"attached_to_doctype": "Workout Log",
-			"attached_to_name": log_name,
-			"attached_to_field": "attachment",
-		},
+		{"attached_to_doctype": doctype, "attached_to_name": name, "attached_to_field": field},
 	)
+
+
+def _claim_attachment(file_url: str, log_name: str):
+	_claim_file(file_url, "Workout Log", log_name, "attachment")
+
+
+def _clean_video_url(url) -> str | None:
+	"""A web link to a video (YouTube or any http/https page), or None."""
+	url = str(url or "").strip()
+	if not url:
+		return None
+	invalid = _("Please enter a valid video link (e.g. a YouTube URL).")
+	# Any other scheme (javascript:, data:, mailto:…) is rejected outright;
+	# a bare "youtu.be/…" gets https:// added.
+	if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", url) and not re.match(r"^https?://", url, re.IGNORECASE):
+		frappe.throw(invalid)
+	parsed = urlparse(url if "://" in url else f"https://{url}")
+	try:
+		parsed.port  # raises on an invalid port
+	except ValueError:
+		frappe.throw(invalid)
+	if parsed.scheme not in ("http", "https") or "." not in (parsed.hostname or "") or len(url) > 500:
+		frappe.throw(invalid)
+	return parsed.geturl()
+
+
+def _parse_movement_media(items) -> list | None:
+	"""Sanitize per-movement media from the client. None means "leave as is"."""
+	if items is None:
+		return None
+	if isinstance(items, str):
+		try:
+			items = json.loads(items) if items.strip() else []
+		except Exception:
+			return None
+	if not isinstance(items, list):
+		return None
+	items = [i for i in items[:MAX_SET_ROWS] if isinstance(i, dict)]
+	names = {i.get("exercise") for i in items if i.get("exercise")}
+	valid = set(frappe.get_all("Exercise", filters={"name": ["in", list(names)]}, pluck="name")) if names else set()
+	rows = []
+	for i in items:
+		media = str(i.get("media") or "").strip() or None
+		video_url = _clean_video_url(i.get("video_url"))
+		if i.get("exercise") in valid and (media or video_url):
+			rows.append(
+				{
+					"exercise": i.get("exercise"),
+					"media": media,
+					"video_url": video_url,
+					"note": str(i.get("note") or "")[:500],
+				}
+			)
+	return rows
 
 
 def _sync_prs(log, member: str):
@@ -774,10 +852,12 @@ def log_workout(
 	attachment: str | None = None,
 	attachment_name: str | None = None,
 	set_logs: list | str | None = None,
+	movement_media: list | str | None = None,
 	client_time: str | None = None,
 	client_op_id: str | None = None,
 ):
-	"""Record or update a member's result for a workout (one log per day)."""
+	"""Record or update a member's result for a workout (one log per day),
+	including form-check photos/videos or links per movement."""
 	member = _require_member()
 	_assert_workout_access(workout)
 
@@ -790,6 +870,7 @@ def log_workout(
 
 	log_date = getdate(_client_datetime(client_time))
 	rows = _parse_set_logs(set_logs)
+	media_rows = _parse_movement_media(movement_media)
 
 	existing_name = frappe.db.get_value(
 		"Workout Log", {"member": member, "workout": workout, "log_date": log_date}, "name"
@@ -815,6 +896,11 @@ def log_workout(
 		doc.attachment_name = attachment_name if attachment else None
 	if rows is not None:
 		doc.set("set_logs", rows)
+	new_media = []
+	if media_rows is not None:
+		known = {r.media for r in doc.get("movement_media") or [] if r.media}
+		new_media = [r["media"] for r in media_rows if r["media"] and r["media"] not in known]
+		doc.set("movement_media", media_rows)
 
 	if doc.is_new():
 		doc.insert(ignore_permissions=True)
@@ -823,6 +909,8 @@ def log_workout(
 
 	if new_attachment:
 		_claim_attachment(attachment, doc.name)
+	for file_url in new_media:
+		_claim_file(file_url, "Workout Log", doc.name, "movement_media")
 	_sync_prs(doc, member)
 
 	return {
@@ -1816,6 +1904,70 @@ def create_coach_workout(
 		}
 	).insert(ignore_permissions=True)
 	return {"id": doc.name, "title": doc.title, "scheduled_on": str(doc.scheduled_date)}
+
+
+def _can_manage_program(program: str) -> bool:
+	if not program or not frappe.db.exists("Training Program", program):
+		return False
+	if is_manager():
+		return True
+	coach = get_coach_for_user()
+	return bool(coach) and frappe.db.get_value("Training Program", program, "coach") == coach
+
+
+def _ensure_exercise(name) -> str | None:
+	"""Library movement for `name`, created on the fly for coaches."""
+	name = str(name or "").strip()[:140]
+	if not name:
+		return None
+	if frappe.db.exists("Exercise", name):
+		return name
+	return frappe.get_doc({"doctype": "Exercise", "exercise_name": name}).insert(ignore_permissions=True).name
+
+
+@frappe.whitelist(methods=["POST"])
+def save_workout_movements(workout: str, movements: list | str):
+	"""Replace a workout's prescribed movements (coach), including a demo
+	photo/video or video link per movement."""
+	program = frappe.db.get_value("Workout", workout, "program")
+	if not program:
+		frappe.throw(_("Workout not found"), frappe.DoesNotExistError)
+	_assert_program_manageable(program)
+
+	if isinstance(movements, str):
+		movements = json.loads(movements or "[]")
+	if not isinstance(movements, list):
+		frappe.throw(_("Invalid movements"))
+
+	doc = frappe.get_doc("Workout", workout)
+	known = {r.media for r in doc.exercises or [] if r.media}
+	rows, new_media = [], []
+	for m in movements[:50]:
+		if not isinstance(m, dict):
+			continue
+		exercise = _ensure_exercise(m.get("exercise"))
+		if not exercise:
+			continue
+		media = str(m.get("media") or "").strip() or None
+		if media and media not in known:
+			new_media.append(media)
+		rows.append(
+			{
+				"exercise": exercise,
+				"sets": max(0, min(50, cint(m.get("sets")))) or None,
+				"reps": str(m.get("reps") or "").strip()[:40] or None,
+				"target_load": str(m.get("weight") or "").strip()[:40] or None,
+				"rest": str(m.get("rest") or "").strip()[:40] or None,
+				"notes": str(m.get("notes") or "").strip()[:1000] or None,
+				"media": media,
+				"video_url": _clean_video_url(m.get("video_url")),
+			}
+		)
+	doc.set("exercises", rows)
+	doc.save(ignore_permissions=True)
+	for file_url in new_media:
+		_claim_file(file_url, "Workout", doc.name, "exercises")
+	return get_workout(workout)
 
 
 @frappe.whitelist(methods=["POST"])

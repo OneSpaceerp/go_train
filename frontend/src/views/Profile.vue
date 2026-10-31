@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Scaffold from '../components/Scaffold.vue'
 import Avatar from '../components/Avatar.vue'
 import Icon from '../components/Icon.vue'
+import SegmentedControl from '../components/SegmentedControl.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import { api } from '../lib/api.js'
 import {
@@ -168,42 +169,26 @@ const links = computed(() => [
 
       <button
         type="button"
-        class="btn-soft !min-h-[40px] !px-4 text-xs mt-3.5"
+        class="btn-soft !min-h-[44px] !px-4 text-sm mt-3.5"
         @click="openEditProfile"
       >
         Edit Stats &amp; Training Goal
       </button>
     </div>
 
-    <!-- Coach / Athlete Workspace Mode Switcher -->
-    <div
-      v-if="u?.is_coach"
-      class="card p-4 mt-4 flex items-center justify-between gap-3"
-    >
-      <div class="min-w-0">
-        <p class="font-bold text-sm text-ink">{{ t('profile.roleMode') }}</p>
-        <p class="text-xs text-ink-mute">
-          Switch between Athlete workouts and Coach workspace
-        </p>
-      </div>
-      <div class="flex gap-1 bg-surface-sunk p-1 rounded-full shrink-0">
-        <button
-          type="button"
-          class="px-3.5 min-h-[38px] rounded-full text-xs font-semibold transition"
-          :class="u?.role !== 'coach' ? 'bg-brand-650 text-white shadow-sm' : 'text-ink-soft'"
-          @click="switchMode('client')"
-        >
-          {{ t('profile.clientView') }}
-        </button>
-        <button
-          type="button"
-          class="px-3.5 min-h-[38px] rounded-full text-xs font-semibold transition"
-          :class="u?.role === 'coach' ? 'bg-brand-650 text-white shadow-sm' : 'text-ink-soft'"
-          @click="switchMode('coach')"
-        >
-          {{ t('profile.coachView') }}
-        </button>
-      </div>
+    <!-- Coach / Athlete workspace: full-width segmented control -->
+    <div v-if="u?.is_coach" class="card p-4 mt-4">
+      <p class="font-semibold text-ink">{{ t('profile.roleMode') }}</p>
+      <p class="text-sm text-ink-mute mt-0.5 mb-3">{{ t('profile.roleModeHelp', 'Log your own training, or manage athletes and programs.') }}</p>
+      <SegmentedControl
+        :model-value="u?.role === 'coach' ? 'coach' : 'client'"
+        :label="t('profile.roleMode')"
+        :options="[
+          { value: 'client', label: t('profile.clientView') },
+          { value: 'coach', label: t('profile.coachView') },
+        ]"
+        @update:model-value="switchMode"
+      />
     </div>
 
     <p class="section-label mt-6 mb-2 px-1">{{ t('profile.exploreGym') }}</p>
@@ -241,27 +226,23 @@ const links = computed(() => [
         </span>
       </button>
 
-      <div class="flex items-center gap-3 p-4 min-h-[56px]">
-        <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-ink-soft shrink-0">
-          <Icon name="sun" :size="18" />
+      <div class="p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-ink-soft shrink-0">
+            <Icon name="sun" :size="18" />
+          </div>
+          <span class="flex-1 font-semibold text-ink">{{ t('profile.theme') }}</span>
         </div>
-        <span class="flex-1 font-semibold text-ink">{{ t('profile.theme') }}</span>
-        <div class="flex gap-1 bg-surface-sunk p-1 rounded-full">
-          <button
-            v-for="th in ['system', 'light', 'dark']"
-            :key="th"
-            type="button"
-            class="px-3 min-h-[36px] rounded-full text-xs font-semibold capitalize transition"
-            :class="
-              (u?.theme || 'system') === th
-                ? 'bg-brand-650 text-white shadow-sm'
-                : 'text-ink-soft'
-            "
-            @click="setTheme(th)"
-          >
-            {{ th }}
-          </button>
-        </div>
+        <SegmentedControl
+          :model-value="u?.theme || 'system'"
+          :label="t('profile.theme')"
+          :options="[
+            { value: 'system', label: t('profile.themeSystem', 'Automatic') },
+            { value: 'light', label: t('profile.themeLight', 'Light') },
+            { value: 'dark', label: t('profile.themeDark', 'Dark') },
+          ]"
+          @update:model-value="setTheme"
+        />
       </div>
     </div>
 
@@ -288,7 +269,7 @@ const links = computed(() => [
         </div>
         <button
           type="button"
-          class="btn-soft !min-h-[38px] !px-3.5 text-xs shrink-0"
+          class="btn-soft !px-4 text-sm shrink-0"
           :disabled="notificationPermission === 'denied'"
           @click="enableOrTestNotifications"
         >
@@ -317,7 +298,7 @@ const links = computed(() => [
         </div>
         <button
           type="button"
-          class="btn-soft !min-h-[38px] !px-3.5 text-xs shrink-0"
+          class="btn-soft !px-4 text-sm shrink-0"
           :class="wakeLockActive ? '!bg-brand-650 !text-white' : ''"
           @click="toggleWakeLock()"
         >
@@ -328,7 +309,7 @@ const links = computed(() => [
       <!-- Offline Storage & App Installation Status -->
       <div class="flex items-center gap-3 p-4 min-h-[56px]">
         <div class="w-9 h-9 rounded-xl bg-surface-sunk grid place-items-center text-brand-600 shrink-0">
-          <Icon name="spark" :size="18" />
+          <Icon name="download" :size="18" />
         </div>
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-ink text-sm">Native App Runtime</p>
@@ -341,7 +322,7 @@ const links = computed(() => [
         <button
           v-if="swUpdateAvailable"
           type="button"
-          class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+          class="btn-primary !min-h-[44px] !px-4 text-sm shrink-0"
           @click="applySwUpdate()"
         >
           Update App
@@ -349,7 +330,7 @@ const links = computed(() => [
         <button
           v-else-if="canInstall && !isStandalone"
           type="button"
-          class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+          class="btn-primary !min-h-[44px] !px-4 text-sm shrink-0"
           @click="promptInstall()"
         >
           Install

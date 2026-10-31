@@ -68,7 +68,7 @@ async function createWorkout() {
     <template v-if="canEdit" #actions>
       <button
         type="button"
-        class="btn-soft !min-h-[40px] !px-3.5 mr-1 text-xs"
+        class="btn-soft !min-h-[44px] !px-3.5 mr-1 text-sm"
         @click="haptics.tap(); showAdd = true"
       >
         <Icon name="plus" :size="16" /> Add Workout

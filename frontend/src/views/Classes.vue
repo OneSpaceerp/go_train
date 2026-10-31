@@ -123,7 +123,7 @@ function capacityPct(s) {
 
       <button
         type="button"
-        class="btn-primary !min-h-[44px] !px-4 text-xs shrink-0"
+        class="btn-primary !min-h-[44px] !px-4 text-sm shrink-0"
         :class="data.checked_in_today ? '!bg-ok' : ''"
         :disabled="checkingIn || data.checked_in_today"
         @click="selfCheckIn()"
@@ -216,7 +216,7 @@ function capacityPct(s) {
             <button
               v-if="data.can_self_checkin && s.my_booking?.status === 'Booked'"
               type="button"
-              class="btn-soft !min-h-[42px] !px-3.5 text-xs"
+              class="btn-soft !min-h-[42px] !px-3.5 text-sm"
               :disabled="checkingIn"
               @click="selfCheckIn(s.id)"
             >

@@ -131,6 +131,12 @@ const workout = (w) => ({
   scheduled_on: w.scheduled_date,
   my_log: w.my_log ? logRow(w.my_log) : null,
 })
+const workoutDetail = (w) => ({
+  ...workout(w),
+  log: w.my_log ? logRow(w.my_log) : null,
+  logs: (w.logs || []).map(logRow),
+  comments: w.comments || [],
+})
 const historyRow = (r) => ({
   ...r,
   id: r.name,
@@ -187,13 +193,15 @@ async function dispatch(httpMethod, rawPath, body) {
     })
   }
   if ((m = path.match(/^\/workouts\/([^/]+)$/)) && httpMethod === 'GET') {
-    const w = await frappe('get_workout', { args: { workout: decodeURIComponent(m[1]) } })
-    return {
-      ...workout(w),
-      log: w.my_log ? logRow(w.my_log) : null,
-      logs: (w.logs || []).map(logRow),
-      comments: w.comments || [],
-    }
+    return workoutDetail(await frappe('get_workout', { args: { workout: decodeURIComponent(m[1]) } }))
+  }
+  if ((m = path.match(/^\/workouts\/([^/]+)\/movements$/)) && httpMethod === 'POST') {
+    return workoutDetail(
+      await frappe('save_workout_movements', {
+        httpMethod: 'POST',
+        args: { workout: decodeURIComponent(m[1]), movements: body.movements },
+      }),
+    )
   }
   if ((m = path.match(/^\/workouts\/([^/]+)\/logs$/)) && httpMethod === 'GET') {
     return ((await frappe('get_workout', { args: { workout: decodeURIComponent(m[1]) } })).logs || []).map(logRow)
@@ -211,6 +219,7 @@ async function dispatch(httpMethod, rawPath, body) {
         attachment: body.attachment_url,
         attachment_name: body.attachment_name,
         set_logs: body.set_logs,
+        movement_media: body.movement_media,
         client_time: body.client_time,
         client_op_id: body.client_op_id,
       },

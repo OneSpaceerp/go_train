@@ -20,7 +20,8 @@
   "attachment",
   "attachment_name",
   "section_sets",
-  "set_logs"
+  "set_logs",
+  "movement_media"
  ],
  "fields": [
   {
@@ -130,11 +131,17 @@
    "fieldtype": "Table",
    "label": "Sets",
    "options": "Workout Set Log"
+  },
+  {
+   "fieldname": "movement_media",
+   "fieldtype": "Table",
+   "label": "Movement Media",
+   "options": "Workout Movement Media"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-04-20 12:00:00.000000",
+ "modified": "2026-11-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Go Train",
  "name": "Workout Log",
