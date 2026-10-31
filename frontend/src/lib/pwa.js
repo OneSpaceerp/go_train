@@ -115,8 +115,11 @@ export function registerPwaServiceWorker(router) {
   if (document.readyState === 'complete') onLoad()
   else window.addEventListener('load', onLoad)
 
+  // Reload only when an update replaces a running worker. On a first visit the
+  // new worker claims the page (clientsClaim) and there is nothing to refresh.
+  const hadController = Boolean(navigator.serviceWorker.controller)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadingForSw) return
+    if (reloadingForSw || !hadController) return
     reloadingForSw = true
     window.location.reload()
   })

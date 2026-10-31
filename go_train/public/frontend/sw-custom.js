@@ -17,7 +17,7 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
-  if (request.mode !== 'navigate') return
+  if (request.mode !== 'navigate' || request.method !== 'GET') return
   const url = new URL(request.url)
   if (url.origin !== self.location.origin || !/^\/gotrain(\/|$)/.test(url.pathname)) return
 
@@ -40,6 +40,52 @@ self.addEventListener('fetch', (event) => {
         const cached = await cache.match(SHELL_KEY)
         return cached || network.catch(() => Response.error())
       }
+    })(),
+  )
+})
+
+// Share sheet (manifest share_target, POST multipart). Stash the photos and
+// videos for the page (lib/launch.js reads SHARE_CACHE) and redirect to the
+// share screen with the text fields, so the athlete can pick a conversation.
+const SHARE_CACHE = 'gotrain-share-inbox'
+const MAX_SHARED_FILES = 5
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event
+  if (request.method !== 'POST') return
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin || url.pathname !== '/gotrain/share') return
+
+  event.respondWith(
+    (async () => {
+      const params = new URLSearchParams()
+      try {
+        const form = await request.formData()
+        for (const key of ['title', 'text', 'url']) {
+          const value = form.get(key)
+          if (value) params.set(key, String(value))
+        }
+        const files = form.getAll('media').filter((f) => f && typeof f !== 'string').slice(0, MAX_SHARED_FILES)
+        const cache = await caches.open(SHARE_CACHE)
+        await Promise.all((await cache.keys()).map((key) => cache.delete(key)))
+        await Promise.all(
+          files.map((file, i) =>
+            cache.put(
+              `/gotrain/share-inbox/${i}`,
+              new Response(file, {
+                headers: {
+                  'content-type': file.type || 'application/octet-stream',
+                  'x-file-name': encodeURIComponent(file.name || `shared-${i + 1}`),
+                },
+              }),
+            ),
+          ),
+        )
+        if (files.length) params.set('files', String(files.length))
+      } catch {
+        // Unreadable share: still open the app on the share screen
+      }
+      return Response.redirect(`/gotrain/share?${params}`, 303)
     })(),
   )
 })

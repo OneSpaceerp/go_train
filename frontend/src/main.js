@@ -7,6 +7,7 @@ import { dismissSplash } from './lib/splash.js'
 import { registerPwaServiceWorker, initVisualViewportKeyboard } from './lib/pwa.js'
 import { initStoragePersistence } from './lib/permissions.js'
 import { applyPlatformAttributes } from './lib/platform.js'
+import { initFileLaunch } from './lib/launch.js'
 import './style.css'
 
 async function start() {
@@ -45,6 +46,7 @@ async function start() {
   applyLocale()
   createApp(App).use(router).mount('#app')
   registerPwaServiceWorker(router)
+  initFileLaunch(router)
 
   // Replay changes saved offline in a previous session (the `online` event
   // won't fire if the app was closed offline and reopened online).

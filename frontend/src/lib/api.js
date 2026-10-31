@@ -291,7 +291,7 @@ async function dispatch(httpMethod, rawPath, body) {
   if ((m = path.match(/^\/threads\/([^/]+)\/messages$/)) && httpMethod === 'POST') {
     return frappe('send_thread_message', {
       httpMethod: 'POST',
-      args: { thread: decodeURIComponent(m[1]), body: body.body },
+      args: { thread: decodeURIComponent(m[1]), body: body.body, files: JSON.stringify(body.files || []) },
     })
   }
 

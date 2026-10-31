@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { session, isCoach } from './lib/session.js'
 import { resolveNavigation, commitNavigation, navDirection } from './lib/nav.js'
 import { prefersReducedMotion } from './lib/gestures.js'
+import { inbox, sharedText, takeSharedFiles, protocolPath } from './lib/launch.js'
 
 export { navDirection }
 
@@ -30,6 +31,18 @@ const routes = [
   // Focused task: logging a workout hides the tab bar for a sticky Save bar
   { path: '/workouts/:id', component: () => import('./views/WorkoutDetail.vue'), meta: { hideTabBar: true } },
   { path: '/threads/:id', component: () => import('./views/Thread.vue'), meta: { hideTabBar: true } },
+  // OS entry points (see lib/launch.js)
+  {
+    path: '/share',
+    component: () => import('./views/Messages.vue'),
+    beforeEnter: async (to) => {
+      inbox.text = sharedText(to.query)
+      inbox.files = to.query.files ? await takeSharedFiles() : []
+      return { path: '/messages', query: { share: '1' }, replace: true }
+    },
+  },
+  { path: '/open', redirect: (to) => ({ path: protocolPath(to.query.u), query: {} }) },
+  { path: '/open-file', redirect: { path: '/messages', query: {} } },
   { path: '/notifications', component: () => import('./views/Notifications.vue') },
   { path: '/exercises', component: () => import('./views/Exercises.vue') },
   { path: '/marketplace', component: () => import('./views/Marketplace.vue') },
