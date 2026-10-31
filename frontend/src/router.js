@@ -27,7 +27,8 @@ const routes = [
   { path: '/history', component: () => import('./views/History.vue') },
   { path: '/programs', component: () => import('./views/Programs.vue') },
   { path: '/programs/:id', component: () => import('./views/ProgramDetail.vue') },
-  { path: '/workouts/:id', component: () => import('./views/WorkoutDetail.vue') },
+  // Focused task: logging a workout hides the tab bar for a sticky Save bar
+  { path: '/workouts/:id', component: () => import('./views/WorkoutDetail.vue'), meta: { hideTabBar: true } },
   { path: '/threads/:id', component: () => import('./views/Thread.vue'), meta: { hideTabBar: true } },
   { path: '/notifications', component: () => import('./views/Notifications.vue') },
   { path: '/exercises', component: () => import('./views/Exercises.vue') },

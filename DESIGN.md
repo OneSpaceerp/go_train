@@ -114,3 +114,16 @@ icon rises into focus over a dot grid, the name slides up, then the app fades in
 - **Red is final.** Missed/failed only — never "pending" or emphasis.
 - **One column, one sheet, one primary action** per screen.
 - **Back closes one layer.** A sheet, then the screen, then the tab's stack.
+- **Thumb-sized controls.** Every tap target is at least 44pt, and button labels never wrap.
+- **Two actions in the bar.** A navigation bar holds at most two actions; the rest go in a "⋯" action sheet.
+- **Focused tasks get an action bar.** Logging a workout or chatting hides the tab bar; the primary action sits in a sticky bottom bar.
+- **Gestures have a button too.** Swipe-to-delete on a set is matched by the set-number menu.
+
+## Movement media
+
+Each movement can carry media in two places:
+
+- **Coach demo:** a photo, a video or a YouTube link on the workout's movement, added in the coach movement editor. Athletes tap the thumbnail to play it in place (YouTube runs through the privacy-enhanced player).
+- **Athlete form check:** a photo, a video or a YouTube link per movement on the athlete's log, so the coach can review technique.
+
+Uploads are private files attached to the Workout (demo) or the Workout Log (form check), so only people who can see that record can open them.

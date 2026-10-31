@@ -45,7 +45,7 @@ const suggestions = ['Back Squat', 'Deadlift', 'Fran', 'kg', 'Rx']
         <button
           v-if="q"
           type="button"
-          class="icon-btn !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
+          class="icon-btn"
           aria-label="Clear search"
           @click="haptics.tap(); q = ''"
         >

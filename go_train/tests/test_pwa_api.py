@@ -257,3 +257,59 @@ class TestPwaApi(IntegrationTestCase):
 		program = _program("GT Private", published=0)
 		frappe.set_user(self.athlete)
 		self.assertRaises(frappe.ValidationError, pwa.buy_program, program=program)
+
+	# --- movement media -----------------------------------------------------
+
+	def test_coach_edits_movements_with_demo_link(self):
+		workout = _workout(_program("GT Coach Movements", coach=self.coach))
+		frappe.set_user(self.coach_user)
+		detail = pwa.save_workout_movements(
+			workout=workout,
+			movements=[{"exercise": "Back Squat", "sets": 3, "reps": "5", "video_url": "youtu.be/ultWZbUMPL8"}],
+		)
+		self.assertTrue(detail["can_edit"])
+		self.assertEqual(detail["exercises"][0]["video_url"], "https://youtu.be/ultWZbUMPL8")
+
+	def test_coach_cannot_edit_movements_of_others_program(self):
+		workout = _workout(_program("GT Other Coach Movements", coach=self.coach2))
+		frappe.set_user(self.coach_user)
+		self.assertRaises(frappe.PermissionError, pwa.save_workout_movements, workout=workout, movements=[])
+		frappe.set_user(self.athlete)
+		self.assertRaises(frappe.PermissionError, pwa.save_workout_movements, workout=workout, movements=[])
+
+	def test_new_movement_is_added_to_the_library(self):
+		workout = _workout(_program("GT New Movement", coach=self.coach))
+		frappe.set_user(self.coach_user)
+		pwa.save_workout_movements(workout=workout, movements=[{"exercise": "GT Sled Push"}])
+		self.assertTrue(frappe.db.exists("Exercise", "GT Sled Push"))
+
+	def test_athlete_form_check_link_saved_per_movement(self):
+		workout = _workout(_program("GT Form Check"))
+		frappe.set_user(self.athlete)
+		pwa.log_workout(
+			workout=workout,
+			status="Done",
+			movement_media=[{"exercise": "Back Squat", "video_url": "https://youtu.be/abc12345678", "note": "rep 4"}],
+		)
+		media = pwa.get_workout(workout=workout)["my_log"]["movement_media"]
+		self.assertEqual(media[0]["video_url"], "https://youtu.be/abc12345678")
+
+	def test_invalid_video_link_rejected(self):
+		workout = _workout(_program("GT Bad Link"))
+		frappe.set_user(self.athlete)
+		self.assertRaises(
+			frappe.ValidationError,
+			pwa.log_workout,
+			workout=workout,
+			movement_media=[{"exercise": "Back Squat", "video_url": "javascript:alert(1)"}],
+		)
+
+	def test_media_must_be_uploaded_by_the_user(self):
+		workout = _workout(_program("GT Foreign File"))
+		frappe.set_user(self.athlete)
+		self.assertRaises(
+			frappe.ValidationError,
+			pwa.log_workout,
+			workout=workout,
+			movement_media=[{"exercise": "Back Squat", "media": "/private/files/someone-else.mp4"}],
+		)

@@ -256,11 +256,11 @@ const DICT = {
 export const currentLocale = computed(() => (session.user?.locale === 'ar' ? 'ar' : 'en'))
 export const isRtl = computed(() => currentLocale.value === 'ar')
 
-// t(key), t(key, 'Fallback text'), or t(key, { n: 3 }) to fill {n} placeholders
-export function t(key, fallbackOrParams) {
+// t(key), t(key, 'Fallback text'), t(key, { n: 3 }) or t(key, 'Set {n}', { n: 3 })
+export function t(key, fallbackOrParams, maybeParams) {
   const loc = currentLocale.value
-  const params = typeof fallbackOrParams === 'object' && fallbackOrParams ? fallbackOrParams : null
-  const fallback = params ? undefined : fallbackOrParams
+  const params = typeof fallbackOrParams === 'object' && fallbackOrParams ? fallbackOrParams : maybeParams || null
+  const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : undefined
   const text = DICT[loc]?.[key] ?? DICT.en[key] ?? fallback ?? key
   return params ? text.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m)) : text
 }

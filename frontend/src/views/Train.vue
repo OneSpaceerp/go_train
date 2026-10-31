@@ -245,7 +245,7 @@ function onPick(date) {
       <button
         v-if="classInfo?.can_self_checkin"
         type="button"
-        class="btn-soft !min-h-[44px] !px-3.5 text-xs shrink-0"
+        class="btn-soft !min-h-[44px] !px-3.5 text-sm shrink-0"
         :class="classInfo.checked_in_today ? '!bg-ok/15 !text-ok' : ''"
         :disabled="checkingIn || classInfo.checked_in_today"
         @click="quickCheckIn"
@@ -287,12 +287,12 @@ function onPick(date) {
         <p class="font-semibold text-sm text-ink truncate">{{ t('pwa.installTitle') }}</p>
         <p class="text-xs text-ink-soft line-clamp-1">{{ t('pwa.installSub') }}</p>
       </div>
-      <button type="button" class="btn-primary !min-h-[38px] !px-3.5 text-xs" @click="onInstallClick">
+      <button type="button" class="btn-primary !min-h-[44px] !px-3.5 text-sm" @click="onInstallClick">
         {{ t('pwa.installBtn') }}
       </button>
       <button
         type="button"
-        class="icon-btn !w-9 !h-9 !min-w-[36px] !min-h-[36px]"
+        class="icon-btn"
         aria-label="Dismiss install banner"
         @click="dismissInstallBanner"
       >
@@ -308,7 +308,7 @@ function onPick(date) {
         </span>
         <button
           type="button"
-          class="text-xs font-semibold text-brand-600 min-h-[36px] px-2 flex items-center gap-1"
+          class="text-xs font-semibold text-brand-600 min-h-[44px] px-2 flex items-center gap-1"
           @click="showFullMonth = !showFullMonth"
         >
           <Icon name="calendar" :size="15" />
@@ -406,7 +406,7 @@ function onPick(date) {
           <RouterLink
             v-if="heroWorkout.program_id || activeProgram"
             :to="`/programs/${heroWorkout.program_id || activeProgram.id}`"
-            class="btn-outline !px-4 text-xs truncate max-w-[10rem]"
+            class="btn-outline !px-4 text-sm truncate max-w-[10rem]"
           >
             {{ heroWorkout.program_name || activeProgram.name }}
           </RouterLink>
@@ -420,7 +420,7 @@ function onPick(date) {
         v-for="p in programs"
         :key="p.id"
         type="button"
-        class="min-h-[38px] px-3.5 rounded-full text-xs font-semibold border transition shrink-0"
+        class="min-h-[44px] px-3.5 rounded-full text-xs font-semibold border transition shrink-0"
         :class="
           activeProgram?.id === p.id
             ? 'bg-ink text-surface border-ink shadow-sm'
@@ -459,7 +459,7 @@ function onPick(date) {
       <button
         v-if="hasDayFilter"
         type="button"
-        class="text-xs font-semibold text-brand-600"
+        class="min-h-[44px] px-2 -me-2 text-sm font-semibold text-brand-650"
         @click="selectedDay = ''"
       >
         Show all ({{ workouts.length }})

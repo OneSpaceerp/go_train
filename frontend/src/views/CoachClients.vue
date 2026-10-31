@@ -93,7 +93,7 @@ async function assignProgram() {
           <button
             v-if="programs.length"
             type="button"
-            class="btn-soft !min-h-[38px] !px-3.5 text-xs"
+            class="btn-soft !min-h-[44px] !px-3.5 text-sm"
             @click="openAssign(c)"
           >
             Assign

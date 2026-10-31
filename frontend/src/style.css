@@ -633,3 +633,204 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
 @media (prefers-reduced-motion: reduce) {
   .seg-next-enter-from, .seg-next-leave-to, .seg-prev-enter-from, .seg-prev-leave-to { transform: none; }
 }
+
+/* ==========================================================================
+   Mobile controls: buttons never wrap, generous targets, native list rows.
+   ========================================================================== */
+.btn, .btn-soft, .btn-primary, .btn-outline, .chip, .add-row, .sheet-done, .sheet-cancel, .tabbar-label {
+  white-space: nowrap;
+}
+.btn-primary, .btn-outline, .btn-soft { text-overflow: ellipsis; overflow: hidden; }
+
+.form-label { display: block; margin-bottom: 0.375rem; font-size: 0.8125rem; font-weight: 600; color: rgb(var(--ink-soft)); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 40px;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  background: rgb(var(--sunk));
+  color: rgb(var(--ink));
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Secondary inline action: "+ Add set", "Form check", "Photo or video" */
+.add-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.875rem;
+  border-radius: 12px;
+  background: rgb(var(--sunk));
+  color: #D92632;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: transform 120ms var(--ease-ios), background-color 150ms ease;
+}
+.add-row:active { transform: scale(0.97); }
+
+.sheet-done { min-height: 44px; padding-inline: 0.5rem; font-size: 1.0625rem; font-weight: 600; color: #D92632; }
+.sheet-done:disabled { opacity: 0.4; }
+
+/* Number stepper */
+.stepper {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  min-height: 50px;
+  border-radius: 0.875rem;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+  overflow: hidden;
+}
+.stepper button { height: 100%; min-height: 48px; display: grid; place-items: center; color: #D92632; }
+.stepper button:active { background: rgb(var(--sunk)); }
+.stepper output { text-align: center; font-size: 1.125rem; font-weight: 700; }
+
+/* Action sheet rows & list rows */
+.action-list, .list-group {
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgb(var(--surface));
+  border: 0.5px solid rgb(var(--line));
+}
+.action-row, .list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  min-height: 54px;
+  padding: 0.5rem 1rem;
+  font-size: 1.0625rem;
+  color: rgb(var(--ink));
+  text-align: start;
+}
+.action-row + .action-row, .list-row + .list-row { border-top: 0.5px solid rgb(var(--line)); }
+.action-row:active, .list-row:active { background: rgb(var(--sunk)); }
+.action-row:disabled, .list-row:disabled { opacity: 0.45; }
+.action-row--destructive { color: rgb(var(--bad)); }
+.action-icon { width: 24px; display: grid; place-items: center; color: inherit; opacity: 0.85; }
+
+/* Set logging rows */
+.set-grid {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 0.5rem;
+}
+.set-head {
+  padding: 0 0.375rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--ink-mute));
+}
+.set-head > span { text-align: center; }
+.set-row {
+  min-height: 56px;
+  padding: 0.25rem 0.375rem;
+  border-radius: 14px;
+  background: rgb(var(--sunk));
+  transition: background-color 180ms ease;
+}
+.set-row.is-done { background: rgb(var(--ok) / 0.14); }
+:root[data-theme='dark'] .set-row.is-done { background: rgb(22 50 41); }
+.set-no {
+  height: 44px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--ink-soft));
+}
+.set-no:active { background: rgb(var(--surface)); }
+.set-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  text-align: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.set-input:focus { border-color: #F23D46; box-shadow: 0 0 0 3px rgb(242 61 70 / 0.18); }
+.set-check {
+  width: 48px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-mute));
+  transition: transform 120ms var(--ease-ios), background-color 160ms ease;
+}
+.set-check:active { transform: scale(0.92); }
+.set-check.is-done { background: rgb(var(--ok)); border-color: transparent; color: #fff; }
+
+/* RPE scale */
+.rpe-btn {
+  min-height: 48px;
+  border-radius: 12px;
+  background: rgb(var(--sunk));
+  color: rgb(var(--ink-soft));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: transform 120ms var(--ease-ios);
+}
+.rpe-btn:active { transform: scale(0.94); }
+.rpe-btn.is-selected { background: #D92632; color: #fff; }
+
+/* Rest timer pinned under the navigation bar */
+.rest-bar {
+  position: sticky;
+  top: calc(52px + env(safe-area-inset-top) + 0.5rem);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 18px;
+  background: rgb(12 16 36);
+  color: #fff;
+  box-shadow: 0 12px 32px -10px rgba(10, 14, 28, 0.45);
+}
+.rest-btn {
+  min-height: 44px;
+  min-width: 48px;
+  padding: 0 0.75rem;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.14);
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.rest-btn--primary { background: #F23D46; }
+
+/* Sticky bottom action bar (screens without the tab bar) */
+.action-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 35;
+  padding: 0.75rem max(1rem, env(safe-area-inset-left)) calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border-top: 0.5px solid rgb(var(--line));
+  transition: transform 260ms var(--ease-ios);
+}
+.action-bar > * { max-width: 36rem; margin-inline: auto; }
+.keyboard-open .action-bar { transform: translateY(110%); }
+@media (min-width: 840px) {
+  html.has-tabbar .action-bar { inset-inline-start: 96px; }
+}

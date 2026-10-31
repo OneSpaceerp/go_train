@@ -53,7 +53,7 @@ onMounted(load)
       </div>
       <button
         type="button"
-        class="btn-primary !min-h-[38px] !px-3.5 text-xs shrink-0"
+        class="btn-primary !min-h-[44px] !px-3.5 text-sm shrink-0"
         @click="requestNotificationPermission()"
       >
         Allow

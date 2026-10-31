@@ -9,6 +9,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { haptics } from '../lib/haptics.js'
 import { t } from '../lib/i18n.js'
 import { velocityTracker, rubberBand } from '../lib/gestures.js'
+import { popSheetEntry, sheetHistorySettled } from '../lib/sheets.js'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -30,10 +31,7 @@ let lastFocus = null
 function close(fromPopstate = false) {
   haptics.tap()
   dragY.value = 0
-  if (pushedHistoryState && !fromPopstate) {
-    pushedHistoryState = false
-    window.history.back()
-  }
+  if (pushedHistoryState && !fromPopstate) popSheetEntry()
   pushedHistoryState = false
   emit('close')
 }
@@ -97,10 +95,15 @@ watch(
     dragY.value = 0
     document.documentElement.classList.toggle('sheet-open', val)
     if (val && !pushedHistoryState) {
+      // Let a sheet that just closed finish popping its entry first
+      await sheetHistorySettled()
+      if (!props.open) return
       window.history.pushState({ ...(window.history.state || {}), _sheetOpen: true }, '')
       pushedHistoryState = true
-    } else if (!val) {
+    } else if (!val && pushedHistoryState) {
+      // Closed by the parent (e.g. after saving): drop this sheet's entry too
       pushedHistoryState = false
+      popSheetEntry()
     }
     // Move focus into the sheet, and back to the opener when it closes
     if (val) {
