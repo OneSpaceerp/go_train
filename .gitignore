@@ -17,3 +17,6 @@ android-settings.json
 *.keystore
 *.jks
 signing-key-info.txt
+
+# PWABuilder downloads (packages, signing keys)
+Mobile/

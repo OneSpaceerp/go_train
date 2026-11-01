@@ -23,7 +23,7 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['window-controls-overlay', 'tabbed', 'standalone', 'minimal-ui'],
         orientation: 'portrait-primary',
-        background_color: '#0B0C10',
+        background_color: '#FED14F',
         theme_color: '#FED14F',
         lang: 'en',
         dir: 'auto',

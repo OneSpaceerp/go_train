@@ -66,7 +66,7 @@ export default {
         sheet: '2rem',
       },
       boxShadow: {
-        card: '0 6px 20px -8px rgba(20, 24, 40, 0.08), 0 1px 3px rgba(20, 24, 40, 0.04)',
+        card: '0 6px 20px -8px rgba(31, 35, 38, 0.08), 0 1px 3px rgba(31, 35, 38, 0.04)',
         nav: '0 -8px 28px -12px rgba(15, 20, 35, 0.14)',
         dock: '0 12px 32px -8px rgba(15, 20, 35, 0.22), 0 2px 8px rgba(15, 20, 35, 0.08)',
         fab: '0 10px 24px -6px rgba(201, 150, 0, 0.45)',
