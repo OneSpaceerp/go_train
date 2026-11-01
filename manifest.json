@@ -4,7 +4,7 @@
   "description": "Native-grade athlete & coach training, class booking, gym check-in, and PR tracking on ERPNext.",
   "start_url": "/gotrain?source=pwa",
   "display": "standalone",
-  "background_color": "#0B0C10",
+  "background_color": "#FED14F",
   "theme_color": "#FED14F",
   "lang": "en",
   "scope": "/gotrain",

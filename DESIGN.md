@@ -4,15 +4,16 @@ description: Multi-sport fitness-space management on ERPNext v16, with a phone-n
 colors:
   sunshine: "#FED14F"
   sunshine-press: "#F2BE22"
-  on-sunshine: "#1B1606"
+  on-sunshine: "#32373B"
   amber-ink: "#875E00"
   sunshine-wash: "#FFF6D6"
-  midnight-ink: "#0C1024"
-  slate-ink: "#3A4458"
-  muted-ink: "#566072"
+  charcoal: "#32373B"
+  ink: "#1F2326"
+  muted-ink: "#5B6166"
   paper: "#FFFFFF"
-  mist-page: "#F4F6FA"
-  hairline: "#DAE0EB"
+  cloud-page: "#F1F1F1"
+  hairline: "#DDDEDF"
+  night-page: "#1B1E20"
   status-done: "#127554"
   status-missed: "#C41E32"
 typography:
@@ -36,21 +37,25 @@ design system lives.
 
 ## Colors
 
-A quiet mist-and-paper world with **one** confident action colour: **Sunshine**,
-taken straight from the logo (`go_train/public/images/go_train_logo.svg`).
+Every colour comes from the logo (`go_train/public/images/go_train_logo.svg`):
+**Sunshine** yellow, **Charcoal** and **Cloud** off-white. A quiet cloud-and-paper
+world with **one** confident action colour, Sunshine.
 
 - **Sunshine** (#FED14F): fills primary buttons, the selected tab, the selected
   day and RPE, and progress. *If it's yellow, you can tap it.* Pressed: #F2BE22.
-- **On Sunshine** (#1B1606): the only text colour on yellow (12.4:1).
+- **On Sunshine** is Charcoal (#32373B): the only text colour on yellow (8.3:1).
   **White never sits on yellow** (1.45:1).
 - **Amber Ink** (#875E00): accent text and icons on light surfaces, such as
   back buttons, Cancel/Done, links and section accents (5.8:1 on white). In dark
-  mode accent text is Sunshine itself (13.5:1 on the dark page).
-- **Sunshine Wash** (#FFF6D6 light / #342D14 dark): soft buttons, chips and
+  mode accent text is Sunshine itself (11.5:1 on the dark page).
+- **Sunshine Wash** (#FFF6D6 light / #464231 dark): soft buttons, chips and
   selected rows, with Amber Ink text.
-- **Midnight Ink** (#0C1024): titles, values and names. **Slate / Muted Ink**:
-  secondary text.
-- **Mist Page** (#F4F6FA) behind white cards; **Hairline** for dividers.
+- **Ink** (#1F2326): titles, values and names. **Charcoal** (#32373B) and
+  **Muted Ink** (#5B6166, 5.6:1 on the page): secondary text. Neutrals are warm
+  greys from the logo, never blue-tinted.
+- **Cloud Page** (#F1F1F1) behind white cards; **Hairline** for dividers.
+- **Dark mode** is built on the logo charcoal: page #1B1E20, cards #25292C,
+  controls #32373B, text Cloud #F1F1F1.
 - **Status:** Done is green (#127554) and Missed is red (#C41E32). Red is
   reserved for missed, failed and destructive actions only.
 
@@ -60,11 +65,13 @@ Tokens live in `frontend/src/style.css` (`--accent`, `--on-accent`,
 
 ## Logo & icons
 
-The vector master is `go_train_logo.svg` (the white dumbbell on a Sunshine tile,
-with a 43/250 corner radius), alongside the glyph-only `go_train_glyph.svg`.
-`npm run icons` renders every app icon from them: the any/maskable/monochrome
-manifest icons, the apple-touch-icon and the favicon. The Desk sprite
-(`public/icons/module-icons.svg`) uses the same dumbbell.
+The logo is a Charcoal-and-Cloud bike on a Sunshine tile (43/250 corner radius).
+The vector master `go_train_logo.svg` and the glyph-only `go_train_glyph.svg`
+are traced from the artwork; `npm run icons` renders every app icon from them:
+the any/maskable manifest icons, the monochrome icon (a white silhouette of the
+glyph), the apple-touch-icon and the favicon. The Desk sprite
+(`public/icons/module-icons.svg`) and the launch screen use a simplified trace
+of the same glyph.
 
 ## Typography
 
@@ -124,9 +131,13 @@ View Transitions also get a cut.
 
 ## Launch
 
-The PWA opens on a dark launch screen with Sunshine glows (`go_train/www/go_train.html`): the app
-icon rises into focus over a dot grid, the name slides up, then the app fades in —
-"FROM nsdLabs" at the foot.
+The PWA opens on a full Sunshine launch screen (`frontend/index.html`, inline so
+it paints on the first frame). The manifest `background_color` is the same yellow,
+so the phone's own launch screen hands over without a flash. The bike rides in
+from the leading edge, the Charcoal wordmark and tagline settle, and a status
+line and Charcoal progress bar run underneath. It lasts about 2.4s, then fades
+into the app (`src/lib/splash.js`); reduced motion shows it static. No glows or
+gradient text.
 
 ## Named rules
 

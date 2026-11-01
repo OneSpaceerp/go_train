@@ -20,24 +20,26 @@
 html.has-tabbar { --tabbar-space: 5.75rem; }
 
 :root {
-  --ink: 12 16 36;        /* #0C1024 — 17.4:1 on #FFFFFF, 16.0:1 on #F4F6FA */
-  --ink-soft: 58 68 88;   /* #3A4458 — 9.15:1 on #FFFFFF, 8.40:1 on #F4F6FA */
-  --ink-mute: 86 96 114;  /* #566072 — 6.32:1 on #FFFFFF, 5.71:1 on #F4F6FA (passes AA 4.5:1) */
-  --line: 218 224 235;
+  /* Neutrals come from the logo: charcoal #32373B and off-white #F1F1F1 */
+  --ink: 31 35 38;        /* #1F2326 — 15.8:1 on #FFFFFF, 14.0:1 on #F1F1F1 */
+  --ink-soft: 50 55 59;   /* #32373B logo charcoal — 12.0:1 on #FFFFFF, 10.7:1 on #F1F1F1 */
+  --ink-mute: 91 97 102;  /* #5B6166 — 6.28:1 on #FFFFFF, 5.56:1 on #F1F1F1 (passes AA 4.5:1) */
+  --line: 221 222 223;
   --surface: 255 255 255;
-  --page: 244 246 250;
-  --sunk: 235 239 246;
+  --page: 241 241 241;    /* #F1F1F1 logo off-white */
+  --sunk: 231 232 233;
   --elevated: 255 255 255;
-  --ok: 18 117 84;        /* #127554 — 5.62:1 on white */
-  --warn: 158 82 0;       /* #9E5200 — 5.38:1 on white */
-  --bad: 196 30 50;       /* #C41E32 — 5.89:1 on white */
-  --field: 158 168 186;
+  --ok: 18 117 84;        /* #127554 — 5.68:1 on white */
+  --warn: 158 82 0;       /* #9E5200 — 5.74:1 on white */
+  --bad: 196 30 50;       /* #C41E32 — 5.87:1 on white */
+  --field: 163 168 172;
   --glass-bg: rgba(255, 255, 255, 0.86);
   /* Sunshine accent (logo #FED14F). Yellow never carries white text:
-     fills use --on-accent (12.4:1); accent text uses --accent-ink (5.8:1 on white). */
+     fills use --on-accent, the logo charcoal (8.3:1); accent text uses
+     --accent-ink (5.8:1 on white). */
   --accent: 254 209 79;      /* #FED14F */
   --accent-press: 242 190 34;/* #F2BE22 */
-  --on-accent: 27 22 6;      /* #1B1606 */
+  --on-accent: 50 55 59;     /* #32373B */
   --accent-ink: 135 94 0;    /* #875E00 */
   --accent-soft: 255 246 214;/* #FFF6D6 */
   --glass-border: rgba(255, 255, 255, 0.65);
@@ -45,41 +47,41 @@ html.has-tabbar { --tabbar-space: 5.75rem; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --ink: 242 245 250;       /* #F2F5FA — 17.6:1 on #0B0C10 */
-    --ink-soft: 184 194 210;  /* #B8C2D2 — 10.4:1 on #0B0C10 */
-    --ink-mute: 155 166 184;  /* #9BA6B8 — 7.18:1 on #0B0C10 (passes AAA) */
-    --line: 40 45 58;
-    --page: 11 12 16;         /* #0B0C10 — Base background */
-    --surface: 22 24 31;      /* #16181F — Elevated card surface */
-    --sunk: 31 35 45;         /* #1F232D — Secondary control surface */
-    --elevated: 29 33 43;     /* #1D212B — Modal / sheet elevated surface */
+    --ink: 241 241 241;       /* #F1F1F1 — 14.8:1 on #1B1E20 */
+    --ink-soft: 201 204 206;  /* #C9CCCE — 10.4:1 on #1B1E20 */
+    --ink-mute: 160 165 169;  /* #A0A5A9 — 6.74:1 on #1B1E20, 4.84:1 on #32373B */
+    --line: 61 66 70;
+    --page: 27 30 32;         /* #1B1E20 — Base background */
+    --surface: 37 41 44;      /* #25292C — Card surface */
+    --sunk: 50 55 59;         /* #32373B — Controls (logo charcoal) */
+    --elevated: 44 48 52;     /* #2C3034 — Modal / sheet */
     --ok: 74 201 155;
     --warn: 255 170 51;
-    --bad: 255 110 122;
-    --field: 66 74 90;
-    --glass-bg: rgba(22, 24, 31, 0.88);
-    --accent-ink: 254 209 79;   /* yellow reads 13:1 on the dark page */
-    --accent-soft: 52 45 20;    /* #342D14 */
+    --bad: 255 123 134;       /* #FF7B86 — 4.9:1 on #32373B */
+    --field: 80 86 91;
+    --glass-bg: rgba(37, 41, 44, 0.88);
+    --accent-ink: 254 209 79;   /* yellow reads 11.5:1 on the dark page */
+    --accent-soft: 70 66 49;    /* #464231 */
     --glass-border: rgba(255, 255, 255, 0.09);
   }
 }
 
 :root[data-theme='dark'] {
-  --ink: 242 245 250;
-  --ink-soft: 184 194 210;
-  --ink-mute: 155 166 184;
-  --line: 40 45 58;
-  --page: 11 12 16;
-  --surface: 22 24 31;
-  --sunk: 31 35 45;
-  --elevated: 29 33 43;
+  --ink: 241 241 241;
+  --ink-soft: 201 204 206;
+  --ink-mute: 160 165 169;
+  --line: 61 66 70;
+  --page: 27 30 32;
+  --surface: 37 41 44;
+  --sunk: 50 55 59;
+  --elevated: 44 48 52;
   --ok: 74 201 155;
   --warn: 255 170 51;
-  --bad: 255 110 122;
-  --field: 66 74 90;
-  --glass-bg: rgba(22, 24, 31, 0.88);
+  --bad: 255 123 134;
+  --field: 80 86 91;
+  --glass-bg: rgba(37, 41, 44, 0.88);
   --accent-ink: 254 209 79;
-  --accent-soft: 52 45 20;
+  --accent-soft: 70 66 49;
   --glass-border: rgba(255, 255, 255, 0.09);
 }
 
@@ -150,7 +152,7 @@ button, a, [role="button"], input, select, textarea {
     background: var(--glass-bg);
     -webkit-backdrop-filter: blur(28px) saturate(1.6);
     backdrop-filter: blur(28px) saturate(1.6);
-    box-shadow: 0 10px 32px -6px rgba(10, 14, 28, 0.18), inset 0 1px 0 0 var(--glass-border);
+    box-shadow: 0 10px 32px -6px rgba(20, 23, 25, 0.18), inset 0 1px 0 0 var(--glass-border);
   }
 
   /* Minimum 44x44pt hit targets across all buttons (Apple HIG accessibility.md) */
@@ -220,7 +222,7 @@ html.sheet-open { overflow: hidden; }
   touch-action: pan-y pinch-zoom;
 }
 .screen--moving {
-  box-shadow: 0 0 40px rgba(10, 14, 28, 0.18);
+  box-shadow: 0 0 40px rgba(20, 23, 25, 0.18);
   will-change: transform;
 }
 .screen-main {
@@ -373,7 +375,7 @@ html.sheet-open { overflow: hidden; }
   border-radius: 999px;
   background: rgb(var(--surface));
   border: 1px solid rgb(var(--line));
-  box-shadow: 0 6px 20px -8px rgba(20, 24, 40, 0.25);
+  box-shadow: 0 6px 20px -8px rgba(31, 35, 38, 0.25);
   color: rgb(var(--ink-mute));
   transition: color 150ms ease;
 }
@@ -522,7 +524,7 @@ html.sheet-open { overflow: hidden; }
   background: rgb(var(--elevated));
   border-radius: 2rem 2rem 0 0;
   border-top: 0.5px solid rgb(var(--line));
-  box-shadow: 0 -12px 40px -12px rgba(10, 14, 28, 0.3);
+  box-shadow: 0 -12px 40px -12px rgba(20, 23, 25, 0.3);
   padding-bottom: calc(1rem + env(safe-area-inset-bottom) + var(--keyboard-inset, 0px));
   transition: transform 380ms var(--ease-ios);
 }
@@ -801,9 +803,9 @@ mark.current { background: #FFB300; outline: 2px solid #FFB300; }
   gap: 0.75rem;
   padding: 0.75rem 0.875rem;
   border-radius: 18px;
-  background: rgb(12 16 36);
+  background: rgb(50 55 59); /* logo charcoal */
   color: #fff;
-  box-shadow: 0 12px 32px -10px rgba(10, 14, 28, 0.45);
+  box-shadow: 0 12px 32px -10px rgba(20, 23, 25, 0.45);
 }
 .rest-btn {
   min-height: 44px;

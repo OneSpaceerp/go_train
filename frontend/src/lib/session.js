@@ -67,7 +67,7 @@ export function applyTheme(theme = session.user?.theme || 'system') {
     theme === 'dark' ||
     (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', isDark ? '#0D0E11' : '#F4F6FA')
+  if (meta) meta.setAttribute('content', isDark ? '#1B1E20' : '#F1F1F1')
 }
 
 // Apply language & RTL direction to <html>.

@@ -31,8 +31,8 @@ const abs = (src) => new URL(src, origin).href
 const icon = (purpose) => manifest.icons.find((i) => i.purpose === purpose && i.sizes === '512x512')
 
 // The app paints its own light or dark background, so system bars follow it
-const LIGHT = '#F4F6FA'
-const DARK = '#0B0C10'
+const LIGHT = '#F1F1F1'
+const DARK = '#1B1E20'
 
 const settings = {
   appVersion,
