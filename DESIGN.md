@@ -65,11 +65,15 @@ Tokens live in `frontend/src/style.css` (`--accent`, `--on-accent`,
 
 ## Logo & icons
 
-The logo is a Charcoal-and-Cloud bike on a Sunshine tile (43/250 corner radius).
-The vector master `go_train_logo.svg` and the glyph-only `go_train_glyph.svg`
-are traced from the artwork; `npm run icons` renders every app icon from them:
-the any/maskable manifest icons, the monochrome icon (a white silhouette of the
-glyph), the apple-touch-icon and the favicon. The Desk sprite
+The logo is a Charcoal-and-Cloud bike on a Sunshine tile (43/250 corner radius),
+with a little depth: a short extruded side (the bike repeated three steps
+down-right at 62% brightness) and a soft charcoal shadow on the tile. The vector
+master `go_train_logo.svg`, the glyph-only `go_train_glyph.svg` and the flat
+`go_train_glyph_flat.svg` are traced from the artwork; `npm run icons` renders
+every app icon from them: the any/maskable manifest icons, the monochrome icon (a
+white silhouette of the flat glyph), the apple-touch-icon and the favicon. Icon
+URLs carry `?v=` plus a hash of the logo (`vite.config.js`, `hooks.py`), so
+browsers, the service worker and iOS Add to Home Screen pick up a new logo. The Desk sprite
 (`public/icons/module-icons.svg`) and the launch screen use a simplified trace
 of the same glyph.
 

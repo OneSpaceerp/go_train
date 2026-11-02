@@ -10,6 +10,7 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const busy = ref(false)
+const logo = `/assets/go_train/images/go_train_logo.png?v=${import.meta.env.VITE_ICON_V}`
 
 async function submit() {
   error.value = ''
@@ -42,7 +43,7 @@ async function submit() {
 <template>
   <div class="min-h-full flex flex-col justify-center px-6 py-10 mx-auto w-full max-w-[26rem]">
     <div class="flex flex-col items-center mb-8">
-      <img :src="'/assets/go_train/images/go_train_logo.png'" alt="" class="w-20 h-20 rounded-[1.25rem] shadow-card" />
+      <img :src="logo" alt="" class="w-20 h-20 rounded-[1.25rem] login-logo" />
       <h1 class="mt-4 text-2xl font-semibold">Go Train</h1>
       <p class="text-ink-soft text-sm mt-1">Train. Track. Progress.</p>
     </div>
@@ -59,3 +60,12 @@ async function submit() {
     </p>
   </div>
 </template>
+
+<style scoped>
+/* The tile sits on the page with a soft charcoal lift, matching the bike's depth */
+.login-logo {
+  box-shadow:
+    0 1px 2px rgb(50 55 59 / 0.12),
+    0 10px 24px -8px rgb(50 55 59 / 0.35);
+}
+</style>

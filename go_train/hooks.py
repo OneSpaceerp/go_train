@@ -14,11 +14,21 @@ app_include_icons = [
 	"/assets/go_train/icons/module-icons.svg",
 ]
 
+
+def _logo_version():
+	# Content hash in the logo URL so browsers drop a cached old logo
+	import hashlib
+	from pathlib import Path
+
+	logo = Path(__file__).parent / "public" / "images" / "go_train_logo.png"
+	return hashlib.sha1(logo.read_bytes()).hexdigest()[:8] if logo.exists() else "1"
+
+
 # Apps screen (Frappe v16+)
 add_to_apps_screen = [
 	{
 		"name": "go_train",
-		"logo": "/assets/go_train/images/go_train_logo.png",
+		"logo": f"/assets/go_train/images/go_train_logo.png?v={_logo_version()}",
 		"title": "Go Train",
 		"route": app_home,
 		"has_permission": "go_train.api.pwa.check_app_permission",

@@ -1,6 +1,19 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+
+// Icons keep their file names, so their URLs carry a hash of the logo: browsers,
+// the service worker and iOS "Add to Home Screen" (which caches icons by URL)
+// then fetch new artwork whenever the logo changes. index.html reads it as
+// %VITE_ICON_V%, the app as import.meta.env.VITE_ICON_V.
+const ICON_V = createHash('sha1')
+  .update(readFileSync(new URL('../go_train/public/images/go_train_logo.svg', import.meta.url)))
+  .digest('hex')
+  .slice(0, 8)
+process.env.VITE_ICON_V = ICON_V
+const image = (file) => `/assets/go_train/images/${file}?v=${ICON_V}`
 
 // Built into go_train/public/frontend so Frappe serves the bundle under
 // /assets/go_train/frontend/*, while copy-entry.js copies index.html to
@@ -69,31 +82,31 @@ export default defineConfig({
         },
         icons: [
           {
-            src: '/assets/go_train/images/icon-192.png',
+            src: image('icon-192.png'),
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/assets/go_train/images/icon-512.png',
+            src: image('icon-512.png'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/assets/go_train/images/icon-maskable-192.png',
+            src: image('icon-maskable-192.png'),
             sizes: '192x192',
             type: 'image/png',
             purpose: 'maskable',
           },
           {
-            src: '/assets/go_train/images/icon-maskable-512.png',
+            src: image('icon-maskable-512.png'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
           },
           {
-            src: '/assets/go_train/images/icon-monochrome-512.png',
+            src: image('icon-monochrome-512.png'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'monochrome',
@@ -101,14 +114,14 @@ export default defineConfig({
         ],
         screenshots: [
           {
-            src: '/assets/go_train/images/screenshot-narrow.png',
+            src: image('screenshot-narrow.png'),
             sizes: '540x1170',
             type: 'image/png',
             form_factor: 'narrow',
             label: 'Go Train Today Session & Set-by-Set Workout Tracker',
           },
           {
-            src: '/assets/go_train/images/screenshot-wide.png',
+            src: image('screenshot-wide.png'),
             sizes: '1280x800',
             type: 'image/png',
             form_factor: 'wide',
@@ -121,28 +134,28 @@ export default defineConfig({
             short_name: 'Train',
             description: 'Jump straight into your scheduled training session',
             url: '/gotrain?source=shortcut-train',
-            icons: [{ src: '/assets/go_train/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
+            icons: [{ src: image('icon-192.png'), sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Classes & Check-In',
             short_name: 'Classes',
             description: 'Book a class spot or check in on the gym floor',
             url: '/gotrain/classes?source=shortcut-classes',
-            icons: [{ src: '/assets/go_train/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
+            icons: [{ src: image('icon-192.png'), sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Log PR / Benchmark',
             short_name: 'Log PR',
             description: 'Record a new personal record or body metric',
             url: '/gotrain/track?source=shortcut-track',
-            icons: [{ src: '/assets/go_train/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
+            icons: [{ src: image('icon-192.png'), sizes: '192x192', type: 'image/png' }],
           },
           {
             name: 'Workout History',
             short_name: 'History',
             description: 'Search past workout scores and notes',
             url: '/gotrain/history?source=shortcut-history',
-            icons: [{ src: '/assets/go_train/images/icon-192.png', sizes: '192x192', type: 'image/png' }],
+            icons: [{ src: image('icon-192.png'), sizes: '192x192', type: 'image/png' }],
           },
         ],
       },
@@ -201,7 +214,7 @@ export default defineConfig({
               url.pathname.startsWith('/files/') || url.pathname.startsWith('/assets/go_train/images/'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'gotrain-media-v2',
+              cacheName: 'gotrain-media-v3',
               expiration: {
                 maxEntries: 120,
                 maxAgeSeconds: 30 * 24 * 60 * 60,

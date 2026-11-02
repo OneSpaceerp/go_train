@@ -85,6 +85,8 @@ router.beforeEach((to, from) => {
     return { path: '/login', query: to.fullPath !== '/' ? { 'redirect-to': to.fullPath } : {} }
   }
   if (to.meta.coach && !isCoach()) return { path: '/' }
+  // Coaches have no Train tab: home (app launch, login, shortcuts) is Clients
+  if (to.path === '/' && isCoach()) return { path: '/coach', replace: true }
 
   navInfo = resolveNavigation(to, from, window.history.state?.position ?? 0)
   return true
