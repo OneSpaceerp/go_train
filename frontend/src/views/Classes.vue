@@ -124,11 +124,12 @@ function capacityPct(s) {
       <button
         type="button"
         class="btn-primary !min-h-[44px] !px-4 text-sm shrink-0"
-        :class="data.checked_in_today ? '!bg-ok' : ''"
+        :class="data.checked_in_today ? '!bg-ok/15 !text-ok !shadow-none' : ''"
         :disabled="checkingIn || data.checked_in_today"
+        :aria-pressed="data.checked_in_today ? 'true' : 'false'"
         @click="selfCheckIn()"
       >
-        <Icon name="check" :size="16" />
+        <Icon :name="data.checked_in_today ? 'check' : 'checkin'" :size="16" />
         {{
           data.checked_in_today
             ? t('train.checkedIn')

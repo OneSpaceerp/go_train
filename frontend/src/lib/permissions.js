@@ -81,8 +81,8 @@ export async function sendLocalNotification({
       if (reg?.showNotification) {
         await reg.showNotification(title, {
           body,
-          icon: '/assets/go_train/images/icon-192.png',
-          badge: '/assets/go_train/images/icon-192.png',
+          icon: `/assets/go_train/images/icon-192.png?v=${import.meta.env.VITE_ICON_V}`,
+          badge: `/assets/go_train/images/icon-192.png?v=${import.meta.env.VITE_ICON_V}`,
           tag,
           renotify,
           vibrate: [20, 50, 30],
@@ -93,7 +93,7 @@ export async function sendLocalNotification({
     }
     new Notification(title, {
       body,
-      icon: '/assets/go_train/images/icon-192.png',
+      icon: `/assets/go_train/images/icon-192.png?v=${import.meta.env.VITE_ICON_V}`,
       tag,
     })
     return true

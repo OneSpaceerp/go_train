@@ -245,12 +245,18 @@ function onPick(date) {
       <button
         v-if="classInfo?.can_self_checkin"
         type="button"
-        class="btn-soft !min-h-[44px] !px-3.5 text-sm shrink-0"
-        :class="classInfo.checked_in_today ? '!bg-ok/15 !text-ok' : ''"
+        class="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-full text-sm font-semibold shrink-0 transition"
+        :class="
+          classInfo.checked_in_today
+            ? 'bg-ok/15 text-ok'
+            : 'bg-surface text-ink border border-line/60 shadow-sm active:bg-surface-sunk'
+        "
         :disabled="checkingIn || classInfo.checked_in_today"
+        :aria-pressed="classInfo.checked_in_today ? 'true' : 'false'"
         @click="quickCheckIn"
       >
-        <Icon name="check" :size="15" />
+        <!-- A checkmark only once checked in; before that it's an action -->
+        <Icon :name="classInfo.checked_in_today ? 'check' : 'checkin'" :size="15" />
         {{ classInfo.checked_in_today ? t('train.checkedIn') : t('train.checkInFloor') }}
       </button>
 

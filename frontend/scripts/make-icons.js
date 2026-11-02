@@ -16,6 +16,8 @@ const dir = path.dirname(fileURLToPath(import.meta.url))
 const images = path.resolve(dir, '..', '..', 'go_train', 'public', 'images')
 const logoSvg = fs.readFileSync(path.join(images, 'go_train_logo.svg'))
 const glyphSvg = fs.readFileSync(path.join(images, 'go_train_glyph.svg'))
+// Flat faces (no shadow/extrusion) for the single-colour icon's silhouette
+const flatSvg = fs.readFileSync(path.join(images, 'go_train_glyph_flat.svg'))
 const SUNSHINE = '#FED14F'
 
 const render = (svg, size) => sharp(svg, { density: Math.ceil((72 * size) / 250) * 2 }).resize(size, size)
@@ -31,7 +33,7 @@ async function square(size, glyphScale, file) {
 
 // Single-colour icon: the OS tints it, so only the glyph's shape (alpha) matters
 async function monochrome(size, file) {
-  const alpha = await render(glyphSvg, size).ensureAlpha().extractChannel('alpha').raw().toBuffer()
+  const alpha = await render(flatSvg, size).ensureAlpha().extractChannel('alpha').raw().toBuffer()
   await sharp({ create: { width: size, height: size, channels: 3, background: '#FFFFFF' } })
     .joinChannel(alpha, { raw: { width: size, height: size, channels: 1 } })
     .png()

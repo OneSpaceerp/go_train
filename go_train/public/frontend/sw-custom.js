@@ -9,6 +9,19 @@ const SHELL_CACHE = 'gotrain-shell-v1'
 const SHELL_KEY = '/gotrain'
 const SHELL_TIMEOUT_MS = 4000
 
+// Runtime image caches are versioned in vite.config.js; remove older ones so
+// stale icons (pre-hash URLs) are not served from cache
+const MEDIA_CACHE = 'gotrain-media-v3'
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k.startsWith('gotrain-media-') && k !== MEDIA_CACHE).map((k) => caches.delete(k))),
+      ),
+  )
+})
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) => cache.add(SHELL_KEY)).catch(() => {}),
